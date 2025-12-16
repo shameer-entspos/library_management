@@ -9,14 +9,14 @@ export async function middleware(request: NextRequest) {
   const session: any = await auth()
   const { pathname, search } = request.nextUrl
 
-  //   if (pathname === '/') {
-  //     const url = new URL('/channels', request.url)
-  //     url.search = search
-  //     return NextResponse.redirect(url)
-  //   }
+  if (pathname === '/') {
+    const url = new URL('/dashboard', request.url)
+    url.search = search
+    return NextResponse.redirect(url)
+  }
 
   if (pathname === '/login' && session) {
-    const url = new URL('/channels', request.url)
+    const url = new URL('/dashboard', request.url)
     url.search = search
     return NextResponse.redirect(url)
   }

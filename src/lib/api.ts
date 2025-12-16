@@ -105,3 +105,19 @@ export const getUserProfileDataAPI = async (token: string) => {
     },
   })
 }
+
+export const getAllMembers = async (token: string) => {
+  return axios.get(`${API_URL_PREFIX}/api/user/all/`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}
+
+export const registerNewMember = async (token: string, data: any) => {
+  return axios.post(`${API_URL_PREFIX}/api/user/register/`, data, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+}

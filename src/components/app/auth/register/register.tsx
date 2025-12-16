@@ -103,7 +103,11 @@ export default function RegisterForm() {
                       <FormItem className="grid gap-2">
                         <FormLabel>Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="John Doe" {...field} />
+                          <Input
+                            className="h-12!"
+                            placeholder="John Doe"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -119,6 +123,7 @@ export default function RegisterForm() {
                         <FormLabel>Email</FormLabel>
                         <FormControl>
                           <Input
+                            className="h-12!"
                             type="email"
                             placeholder="johndoe@mail.com"
                             {...field}
@@ -139,6 +144,7 @@ export default function RegisterForm() {
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
                           <Input
+                            className="h-12!"
                             type="text"
                             placeholder="0300-1234567"
                             {...field}
@@ -185,7 +191,8 @@ export default function RegisterForm() {
                       <FormItem className="grid gap-2">
                         <FormLabel>CNIC (optional)</FormLabel>
                         <FormControl>
-                          <Input placeholder="42101-1234567-1" {...field} />
+                          <Input
+                          className='h-12!' placeholder="42101-1234567-1" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -201,6 +208,7 @@ export default function RegisterForm() {
                         <FormLabel>Profile Picture</FormLabel>
                         <FormControl>
                           <Input
+                          className='h-12!'
                             type="file"
                             accept="image/*"
                             onChange={(e) =>

@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import {
-  Card,
   CardContent,
   CardDescription,
   CardHeader,
@@ -26,9 +25,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { useState } from 'react'
-import { getUserProfileDataAPI, loginAPI } from '@/lib/api'
-import { signIn } from '@/auth'
+import { loginAPI } from '@/lib/api'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 
 const loginFormSchema = z.object({
   email: z.string().email(),
@@ -63,29 +62,26 @@ export default function LoginPreview() {
           message: response.data.message,
         })
       } else if (response.status === 200) {
-        console.log(response.data)
-        toast.success('Login successful!')
-        return
         const { access, refresh } = response.data
-        const res = await getUserProfileDataAPI(response.data.access)
+        // const res = await getUserProfileDataAPI(response.data.access)
 
-        if (res.status === 200) {
-          const loginRes = await signIn('credentials', {
-            email: data.email,
-            access: access,
-            refresh: refresh,
-            role: res?.data?.role || '',
-            redirect: false,
-          })
-          if (loginRes?.error) {
-            toast.error(loginRes.error)
-            return
-          }
-          if (loginRes?.ok) {
-            toast.success('Login successful!')
-            router.push('/channels')
-          }
+        // if (res.status === 200) {
+        const loginRes = await signIn('credentials', {
+          email: data.email,
+          access: access,
+          refresh: refresh,
+          role: 'admin',
+          redirect: false,
+        })
+        if (loginRes?.error) {
+          toast.error(loginRes.error)
+          return
         }
+        if (loginRes?.ok) {
+          toast.success('Login successful!')
+          router.push('/')
+        }
+        // }
       }
     } catch (error: any) {
       console.log(error?.response)
@@ -99,7 +95,9 @@ export default function LoginPreview() {
     <div className="flex h-full w-full flex-col items-center md:min-h-[50vh] md:justify-center lg:px-4">
       <div className="w-full">
         <CardHeader className="mb-6 space-y-1 md:text-center">
-          <CardTitle className="text-3xl lg:text-4xl">Login</CardTitle>
+          <CardTitle className="text-2xl md:text-3xl lg:text-4xl">
+            Login
+          </CardTitle>
           <CardDescription>
             Enter your email and password to login to your account.
           </CardDescription>
@@ -116,6 +114,7 @@ export default function LoginPreview() {
                       <FormLabel htmlFor="email">Email</FormLabel>
                       <FormControl>
                         <Input
+                          className="h-12!"
                           id="email"
                           placeholder="johndoe@mail.com"
                           type="email"
@@ -144,6 +143,7 @@ export default function LoginPreview() {
                       <FormControl>
                         <PasswordInput
                           id="password"
+                          className="h-12!"
                           placeholder="******"
                           autoComplete="current-password"
                           {...field}

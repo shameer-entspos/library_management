@@ -130,7 +130,6 @@
   }
 }
 
-
 /* width */
 ::-webkit-scrollbar {
   width: 6px;
@@ -151,4 +150,13 @@
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
   background: #888;
+}
+
+.scroll-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scroll-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
