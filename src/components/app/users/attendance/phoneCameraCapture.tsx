@@ -190,13 +190,13 @@ export default function FaceAttendance() {
           >
             <CheckCircle className="h-6 w-6" /> Check In
           </Button>
-          <Button
+          {/* <Button
             onClick={() => setMode('checkout')}
             className="rounded-full px-5!"
             variant={mode === 'checkout' ? 'default' : 'secondary'}
           >
             <UserCheck className="h-6 w-6" /> Check Out
-          </Button>
+          </Button> */}
         </div>
 
         {/* User ID for Registration */}
