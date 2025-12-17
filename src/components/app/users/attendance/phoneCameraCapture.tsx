@@ -235,10 +235,10 @@ export default function FaceAttendance() {
 
         {/* Capture Button */}
         <div className="mt-10 text-center">
-          <button
+          <Button
             onClick={captureAndSend}
             disabled={isProcessing || (mode === 'register' && !userId.trim())}
-            className={`mx-auto flex transform items-center gap-4 rounded-full px-16 py-8 text-3xl font-bold text-white shadow-2xl transition-all hover:scale-105 ${
+            className={`mx-auto flex transform items-center gap-2 rounded-full px-6! font-bold text-white shadow-2xl transition-all hover:scale-105 ${
               isProcessing || (mode === 'register' && !userId.trim())
                 ? 'cursor-not-allowed bg-gray-400'
                 : mode === 'register'
@@ -255,7 +255,7 @@ export default function FaceAttendance() {
               </>
             ) : (
               <>
-                <Camera className="h-12 w-12" />
+                <Camera className="size-6" />
                 {mode === 'register'
                   ? 'Register My Face'
                   : mode === 'checkin'
@@ -263,7 +263,7 @@ export default function FaceAttendance() {
                     : 'Check Out Now'}
               </>
             )}
-          </button>
+          </Button>
         </div>
 
         {/* Footer */}
