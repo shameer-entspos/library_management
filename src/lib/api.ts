@@ -119,7 +119,7 @@ export const getAllMembers = async (token: string) => {
 }
 
 export const registerNewMember = async (token: string, data: any) => {
-  return axios.post(`${API_URL_PREFIX}/backend/api/user/register/`, data, {
+  return axios.post(`/api/user/register/`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

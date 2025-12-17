@@ -194,7 +194,7 @@ export default function AddUserForm() {
         return
       }
 
-      const res = await axios.post(`/backend/api/attendance/face/register/`, {
+      const res = await axios.post(`/api/attendance/face/register/`, {
         user_id: parseInt(userId),
         image: imageBase64,
       })

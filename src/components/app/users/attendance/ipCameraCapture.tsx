@@ -73,7 +73,7 @@ export default function FaceAttendanceIPCam() {
           return
         }
 
-        res = await axios.post(`/backend/api/attendance/face/register/`, {
+        res = await axios.post(`/api/attendance/face/register/`, {
           user_id: parseInt(userId),
           image: imageBase64,
         })
@@ -88,7 +88,7 @@ export default function FaceAttendanceIPCam() {
           </div>
         )
       } else {
-        res = await axios.post(`/backend/api/attendance/checkin_checkout/`, {
+        res = await axios.post(`/api/attendance/checkin_checkout/`, {
           action: mode,
           image: imageBase64,
           method: 'face',

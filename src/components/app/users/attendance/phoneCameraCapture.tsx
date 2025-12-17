@@ -12,6 +12,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { usePathname } from 'next/navigation'
 
 type Mode = 'register' | 'checkin' | 'checkout'
 
@@ -21,39 +22,62 @@ export default function FaceAttendance() {
   const [userId, setUserId] = useState('')
   const [status, setStatus] = useState<React.ReactNode>('Starting camera...')
   const [isProcessing, setIsProcessing] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
-    startCamera()
-  }, [])
+    let stream: MediaStream | null = null
 
-  const startCamera = async () => {
-    try {
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      const videoDevices = devices.filter((d) => d.kind === 'videoinput')
+    const startCamera = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const videoDevices = devices.filter((d) => d.kind === 'videoinput')
 
-      const phoneCam = videoDevices.find((d) =>
-        /droidcam|iriun|android|phone/i.test(d.label)
-      )
+        const phoneCam = videoDevices.find((d) =>
+          /droidcam|iriun|android|phone/i.test(d.label)
+        )
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          deviceId: phoneCam ? { exact: phoneCam.deviceId } : undefined,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 },
-        },
-      })
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            deviceId: phoneCam ? { exact: phoneCam.deviceId } : undefined,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 },
+          },
+        })
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.play() // Ensure it starts playing
+        }
+
+        setStatus('Camera ready! Look straight at the phone camera')
+      } catch (err: any) {
+        console.error('Failed to access camera:', err)
+        setStatus(
+          'Camera not found. Connect phone via DroidCam or Iriun Webcam'
+        )
       }
-      setStatus('Camera ready! Look straight at the phone camera')
-    } catch (err: any) {
-      console.log(err)
-      setStatus('Camera not found. Connect phone via DroidCam or Iriun Webcam')
     }
-  }
 
+    startCamera()
+
+    // Cleanup: This WILL run when component unmounts
+    return () => {
+      if (stream) {
+        // Stop all tracks — this turns off the camera light immediately
+        stream.getTracks().forEach((track) => {
+          track.stop()
+          console.log('Track stopped:', track.kind)
+        })
+        stream = null
+      }
+
+      // Extra safety: clear video srcObject
+      if (videoRef.current) {
+        videoRef.current.srcObject = null
+      }
+    }
+  }, []) // Empty array: only mount + unmount
   const captureAndSend = async () => {
     if (!videoRef.current || isProcessing) return
 
@@ -77,7 +101,7 @@ export default function FaceAttendance() {
           return
         }
 
-        res = await axios.post('/backend/api/attendance/face/register/', {
+        res = await axios.post('/api/attendance/face/register/', {
           user_id: parseInt(userId),
           image: imageBase64,
         })
@@ -92,7 +116,7 @@ export default function FaceAttendance() {
           </div>
         )
       } else {
-        res = await axios.post('/backend/api/attendance/checkin_checkout/', {
+        res = await axios.post('/api/attendance/checkin_checkout/', {
           action: mode, // 'checkin' or 'checkout'
           image: imageBase64,
           method: 'face',
