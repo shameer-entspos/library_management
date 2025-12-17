@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from 'axios'
 
-const API_URL_PREFIX = process.env.API_URL_PREFIX || 'http://127.0.0.1:8000'
+const API_URL_PREFIX = ''
 
 // Authentication APIs
 export const getUserId = (email: string) => {
@@ -62,7 +62,11 @@ export const signUpAPI = (data: any) => {
 }
 
 export const loginAPI = (data: { email: string; password: string }) => {
-  return axios.post(`${API_URL_PREFIX}/api/user/login/`, data)
+  return axios.post('/api/user/login/', data, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
 }
 
 export const requestOtp = (data: any) => {
@@ -107,7 +111,7 @@ export const getUserProfileDataAPI = async (token: string) => {
 }
 
 export const getAllMembers = async (token: string) => {
-  return axios.get(`${API_URL_PREFIX}/api/user/all/`, {
+  return axios.get('/api/user/all/', {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -115,7 +119,7 @@ export const getAllMembers = async (token: string) => {
 }
 
 export const registerNewMember = async (token: string, data: any) => {
-  return axios.post(`${API_URL_PREFIX}/api/user/register/`, data, {
+  return axios.post(`${API_URL_PREFIX}/backend/api/user/register/`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

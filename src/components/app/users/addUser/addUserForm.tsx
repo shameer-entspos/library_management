@@ -194,13 +194,10 @@ export default function AddUserForm() {
         return
       }
 
-      const res = await axios.post(
-        `${process.env.API_URL_PREFIX}/api/attendance/face/register/`,
-        {
-          user_id: parseInt(userId),
-          image: imageBase64,
-        }
-      )
+      const res = await axios.post(`/backend/api/attendance/face/register/`, {
+        user_id: parseInt(userId),
+        image: imageBase64,
+      })
 
       setRegistered({
         success: true,
@@ -554,7 +551,7 @@ export default function AddUserForm() {
                   <>{registered.qrUrl}</>
                   {registered.qrUrl ? (
                     <Image
-                      src={`${process.env.API_URL_PREFIX}${registered.qrUrl}`}
+                      src={`${registered.qrUrl}`}
                       alt="Member QR Code"
                       className="h-64 w-64 object-contain"
                       width={256}

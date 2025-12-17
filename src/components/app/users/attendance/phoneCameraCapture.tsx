@@ -77,13 +77,10 @@ export default function FaceAttendance() {
           return
         }
 
-        res = await axios.post(
-          process.env.API_URL_PREFIX + '/api/attendance/face/register/',
-          {
-            user_id: parseInt(userId),
-            image: imageBase64,
-          }
-        )
+        res = await axios.post('/backend/api/attendance/face/register/', {
+          user_id: parseInt(userId),
+          image: imageBase64,
+        })
 
         setStatus(
           <div className="text-center">
@@ -95,14 +92,11 @@ export default function FaceAttendance() {
           </div>
         )
       } else {
-        res = await axios.post(
-          process.env.API_URL_PREFIX + '/api/attendance/checkin_checkout/',
-          {
-            action: mode, // 'checkin' or 'checkout'
-            image: imageBase64,
-            method: 'face',
-          }
-        )
+        res = await axios.post('/backend/api/attendance/checkin_checkout/', {
+          action: mode, // 'checkin' or 'checkout'
+          image: imageBase64,
+          method: 'face',
+        })
 
         const isCheckIn = res.data.message.includes('In')
         const confidence = res.data.confidence

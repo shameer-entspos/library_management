@@ -73,13 +73,10 @@ export default function FaceAttendanceIPCam() {
           return
         }
 
-        res = await axios.post(
-          `${process.env.API_URL_PREFIX}/api/attendance/face/register/`,
-          {
-            user_id: parseInt(userId),
-            image: imageBase64,
-          }
-        )
+        res = await axios.post(`/backend/api/attendance/face/register/`, {
+          user_id: parseInt(userId),
+          image: imageBase64,
+        })
 
         setStatus(
           <div className="text-center">
@@ -91,14 +88,11 @@ export default function FaceAttendanceIPCam() {
           </div>
         )
       } else {
-        res = await axios.post(
-          `${process.env.API_URL_PREFIX}/api/attendance/checkin_checkout/`,
-          {
-            action: mode,
-            image: imageBase64,
-            method: 'face',
-          }
-        )
+        res = await axios.post(`/backend/api/attendance/checkin_checkout/`, {
+          action: mode,
+          image: imageBase64,
+          method: 'face',
+        })
 
         const isCheckIn = res.data.message.includes('In')
         const confidence = res.data.confidence
