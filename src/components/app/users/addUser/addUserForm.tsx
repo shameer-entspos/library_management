@@ -561,10 +561,9 @@ export default function AddUserForm() {
             ) : registered.tab === 'qr_code' ? (
               <>
                 <div className="flex flex-col justify-center gap-4 text-center">
-                  <>{registered.qrUrl}</>
                   {registered.qrUrl ? (
                     <Image
-                      src={`${registered.qrUrl}`}
+                      src={`${process.env.API_URL_PREFIX}${registered.qrUrl}`}
                       alt="Member QR Code"
                       className="h-64 w-64 object-contain"
                       width={256}
