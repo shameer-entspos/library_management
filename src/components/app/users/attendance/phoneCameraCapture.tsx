@@ -78,6 +78,7 @@ export default function FaceAttendance() {
       }
     }
   }, []) // Empty array: only mount + unmount
+
   const captureAndSend = async () => {
     if (!videoRef.current || isProcessing) return
 
@@ -215,7 +216,7 @@ export default function FaceAttendance() {
         <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-black shadow-2xl">
           <video ref={videoRef} autoPlay playsInline muted className="w-full" />
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-96 w-72 rounded-3xl border-4 border-dashed opacity-60" />
+            <div className="h-92 w-72 rounded-[40%] border-4 border-dashed border-red-400 opacity-60" />
           </div>
           <div className="bg-opacity-70 absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-black px-6 py-3 text-lg font-medium text-white">
             Align face in oval

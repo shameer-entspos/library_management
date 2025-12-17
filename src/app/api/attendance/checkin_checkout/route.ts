@@ -7,7 +7,7 @@ export async function POST(request: Request) {
 
     // Forward to your backend
     const backendResponse = await fetch(
-      'http://13.49.136.84:8000/api/attendance/checkin_checkout/',
+      `${process.env.API_URL_PREFIX}/api/attendance/checkin_checkout/`,
       {
         method: 'POST',
         headers: {

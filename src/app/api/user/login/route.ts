@@ -3,7 +3,7 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     // Forward the request to your backend
-    const res = await fetch('http://13.49.136.84:8000/api/user/login/', {
+    const res = await fetch(`${process.env.API_URL_PREFIX}/api/user/login/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

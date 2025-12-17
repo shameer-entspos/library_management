@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     const authHeader = request.headers.get('authorization')
 
     const backendResponse = await fetch(
-      'http://13.49.136.84:8000/api/user/register/',
+      `${process.env.API_URL_PREFIX}/api/user/register/`,
       {
         method: 'POST',
         headers: {

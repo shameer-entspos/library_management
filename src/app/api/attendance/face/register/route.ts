@@ -6,7 +6,7 @@ export async function POST(request: Request) {
 
     // Forward the request to your actual backend
     const backendResponse = await fetch(
-      'http://13.49.136.84:8000/api/attendance/face/register/',
+      `${process.env.API_URL_PREFIX}/api/attendance/face/register/`,
       {
         method: 'POST',
         headers: {

@@ -23,7 +23,6 @@ const MembersPage = () => {
 
       if (res.status === 200) {
         setMembers(res.data.members)
-        console.log(res.data)
       }
 
       return res.data.members

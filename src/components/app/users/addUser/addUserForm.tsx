@@ -83,9 +83,10 @@ export default function AddUserForm() {
   const { data: session }: any = useSession()
   const [loading, setLoading] = useState(false)
 
-  const imgRef = useRef<HTMLImageElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+
   const [userId, setUserId] = useState('')
-  const [ipAddress, setIpAddress] = useState('192.168.100.8')
+  const streamRef = useRef<MediaStream | null>(null)
   const [user, setUser] = useState<any>(null)
   const [status, setStatus] = useState<React.ReactNode>(
     'Enter phone IP and connect...'
@@ -109,6 +110,49 @@ export default function AddUserForm() {
     },
   })
 
+  const startCamera = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices()
+      const videoDevices = devices.filter((d) => d.kind === 'videoinput')
+
+      const phoneCam = videoDevices.find((d) =>
+        /droidcam|iriun|android|phone/i.test(d.label)
+      )
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          deviceId: phoneCam ? { exact: phoneCam.deviceId } : undefined,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
+        },
+      })
+
+      streamRef.current = stream
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+
+      setStatus('Camera ready! Look straight at the camera')
+    } catch (err) {
+      console.error(err)
+      setStatus('Camera not available')
+    }
+  }
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
+  }
+
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'email' && value.email) {
@@ -119,6 +163,16 @@ export default function AddUserForm() {
 
     return () => subscription.unsubscribe()
   }, [form])
+
+  useEffect(() => {
+    if (registered.tab === 'scan_image' && open) {
+      startCamera()
+    } else {
+      stopCamera()
+    }
+
+    return () => stopCamera()
+  }, [registered.tab, open])
 
   async function onSubmit(values: AddUserFormValues) {
     const token = session?.user?.access
@@ -141,8 +195,6 @@ export default function AddUserForm() {
 
         setUser(user)
         setUserId(user.id.toString())
-
-        updateStream()
       } else if (res.status === 200) {
         toast.error(res.data.message || 'Email or username already exists.')
       } else {
@@ -160,31 +212,18 @@ export default function AddUserForm() {
   // capture and send image
 
   // Update stream when IP changes
-  const updateStream = () => {
-    const url = `http://${ipAddress.trim()}:4747/mjpegfeed?1280x720`
-    setStreamUrl(url)
-    setStatus('Connecting to phone camera... Please wait.')
-  }
 
   const captureAndSend = async () => {
-    if (!imgRef.current || isProcessing || !imgRef.current.complete) {
-      setStatus('Camera not ready or loading. Please wait.')
-      return
-    }
+    if (!videoRef.current || isProcessing) return
 
     setIsProcessing(true)
     setStatus(<Loader2 className="mx-auto h-12 w-12 animate-spin" />)
 
     const canvas = document.createElement('canvas')
-    canvas.width = imgRef.current.naturalWidth || 1280
-    canvas.height = imgRef.current.naturalHeight || 720
-    const ctx = canvas.getContext('2d')
-    if (!ctx) {
-      setStatus('Failed to capture image')
-      setIsProcessing(false)
-      return
-    }
-    ctx.drawImage(imgRef.current, 0, 0)
+    canvas.width = videoRef.current.videoWidth
+    canvas.height = videoRef.current.videoHeight
+    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0)
+
     const imageBase64 = canvas.toDataURL('image/jpeg', 0.95)
 
     try {
@@ -194,7 +233,7 @@ export default function AddUserForm() {
         return
       }
 
-      const res = await axios.post(`/api/attendance/face/register/`, {
+      const res = await axios.post('/api/attendance/face/register/', {
         user_id: parseInt(userId),
         image: imageBase64,
       })
@@ -206,20 +245,19 @@ export default function AddUserForm() {
         pdfGenerated: res.data.pdf_generated,
       })
 
+      stopCamera()
+
       setStatus(
         <div className="text-center">
-          <CheckCircle className="mx-auto size-8 text-green-500" />
-          <div className="font-bold text-green-500">
+          <CheckCircle className="mx-auto mb-4 h-16 w-16 text-green-500" />
+          <div className="text-2xl font-bold text-green-600">
             Registered Successfully!
           </div>
-          <div className="mt-2 text-lg font-medium">
-            {res.data.user || 'User'}
-          </div>
+          <div className="mt-2 text-lg">{res.data.user || 'User'}</div>
         </div>
       )
     } catch (err: any) {
-      const msg =
-        err.response?.data?.error || 'Failed. Check connection or try again.'
+      const msg = err.response?.data?.error || 'Operation failed. Try again.'
       setStatus(
         <div className="text-center">
           <XCircle className="mx-auto mb-4 h-16 w-16 text-red-500" />
@@ -236,6 +274,10 @@ export default function AddUserForm() {
       open={open}
       onOpenChange={(isOpen) => {
         setOpen(isOpen)
+
+        if (!isOpen) {
+          stopCamera()
+        }
 
         if (!isOpen && registered.success) {
           setTimeout(() => {
@@ -474,49 +516,21 @@ export default function AddUserForm() {
               </Form>
             ) : registered.tab === 'scan_image' ? (
               <div className="flex flex-col gap-4">
-                <form
-                  onSubmit={(e) => e.preventDefault()}
-                  className="flex w-full flex-col gap-4 py-2 sm:flex-row"
-                >
-                  <Input
-                    value={ipAddress}
-                    onChange={(e) => setIpAddress(e.target.value)}
-                    placeholder="192.168.1.100"
-                    className="rounded-full"
+                <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-black shadow-2xl">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full"
                   />
-                  <Button
-                    onClick={updateStream}
-                    size="lg"
-                    className="rounded-full"
-                  >
-                    <RefreshCw className="mr-2 h-5 w-5" /> Connect
-                  </Button>
-                </form>
-
-                {streamUrl && (
-                  <Card className="relative overflow-hidden py-0!">
-                    <img
-                      ref={imgRef}
-                      src={streamUrl}
-                      alt="Phone Camera Stream"
-                      className="w-full"
-                      crossOrigin="anonymous"
-                      onLoad={() => setStatus('Camera connected! Ready to use')}
-                      onError={() =>
-                        setStatus(
-                          'Cannot connect. Check IP address and DroidCam Wi-Fi mode'
-                        )
-                      }
-                    />
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                      <div className="h-96 w-72 rounded-3xl border-4 border-dashed border-white opacity-60" />
-                    </div>
-                    <div className="bg-opacity-70 absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-black px-6 py-3 text-lg font-medium text-white">
-                      Align face in oval
-                    </div>
-                  </Card>
-                )}
-
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="h-92 w-72 rounded-[40%] border-4 border-dashed border-red-400 opacity-60" />{' '}
+                  </div>
+                  <div className="bg-opacity-70 absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-black px-6 py-3 text-lg font-medium text-white">
+                    Align face in oval
+                  </div>
+                </div>{' '}
                 {/* Status */}
                 <div className="mx-auto inline-block rounded-2xl">
                   <>
@@ -527,7 +541,6 @@ export default function AddUserForm() {
                     )}
                   </>
                 </div>
-
                 <div className="flex justify-center">
                   <Button
                     size={'lg'}

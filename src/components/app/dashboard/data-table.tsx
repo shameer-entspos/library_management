@@ -148,7 +148,6 @@ const columns: ColumnDef<Member>[] = [
     header: 'QR Code',
     cell: ({ row }) => {
       const membership = row.original.membership
-      console.log(membership)
       const qrUrl = membership ? membership.qr_url : null
       return qrUrl ? (
         <Popover>
