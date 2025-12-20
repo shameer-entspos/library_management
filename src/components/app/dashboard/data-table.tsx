@@ -58,6 +58,7 @@ import {
   IconChevronRight,
   IconChevronsLeft,
   IconChevronsRight,
+  IconDownload,
 } from '@tabler/icons-react'
 
 import {
@@ -65,10 +66,32 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import Image from 'next/image'
+import UpdateUserForm from '../users/updateUser/updateUserForm'
+import axios from 'axios'
+import { useSession } from 'next-auth/react'
+import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 
 // Define columns using your actual Member type
 const columns: ColumnDef<Member>[] = [
@@ -125,6 +148,14 @@ const columns: ColumnDef<Member>[] = [
   {
     accessorKey: 'email',
     header: 'Email',
+  },
+  {
+    accessorKey: 'category',
+    header: 'Category',
+  },
+  {
+    accessorKey: 'age_group',
+    header: 'Age Group',
   },
   {
     accessorKey: 'phone_no',
@@ -200,8 +231,8 @@ const columns: ColumnDef<Member>[] = [
       const isExpired = membership.is_expired
 
       return (
-        <Popover>
-          <PopoverTrigger asChild>
+        <Dialog>
+          <DialogTrigger asChild>
             <Badge
               variant={
                 isActive ? 'default' : isExpired ? 'destructive' : 'secondary'
@@ -212,138 +243,90 @@ const columns: ColumnDef<Member>[] = [
               {isExpired && <XCircle className="mr-1 h-3 w-3" />}
               {membership.plan.replace('-', ' ')}
             </Badge>
-          </PopoverTrigger>
+          </DialogTrigger>
 
-          <PopoverContent className="mr-6 w-80 p-0" align="start">
-            <Card className="gap-2 border-0 py-4! shadow-lg">
-              <CardHeader className="px-4!">
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                  <Avatar className="bg-secondary">
-                    <AvatarImage
-                      src={row.original.photo || undefined}
-                      alt={`${row.original.first_name} ${row.original.last_name}`}
-                      className="object-cover"
-                    />
-                    <AvatarFallback>
-                      {row.original.first_name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  Membership Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 px-4! text-sm">
-                {/* Plan & Status */}
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Plan</span>
-                  <Badge variant={isActive ? 'default' : 'secondary'}>
-                    {membership.plan.replace('-', ' ')}
-                  </Badge>
+          {/* Dialog Content */}
+          <DialogContent className="w-[90vw] max-w-3xl p-4">
+            <div className="h-[300px] w-full overflow-hidden rounded-2xl bg-white">
+              {/* Header */}
+              <div className="relative z-10 flex items-center justify-between bg-white p-2">
+                <Image
+                  src={'/govt-of-punjab-logo.png'}
+                  alt="Logo"
+                  width={100}
+                  height={100}
+                  className="size-16 scale-110"
+                />
+                <div className="text-center text-black">
+                  <h1 className="font-serif text-base leading-tight font-bold md:text-lg lg:text-2xl!">
+                    E-LIBRARY
+                  </h1>
+                  <p className="text-xs font-medium tracking-wider opacity-95">
+                    GOVERNMENT OF Punjab
+                  </p>
                 </div>
-
-                {/* Status */}
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Status</span>
-                  <Badge
-                    variant={
-                      isActive
-                        ? 'default'
-                        : isExpired
-                          ? 'destructive'
-                          : 'secondary'
-                    }
-                  >
-                    {membership.status}
-                  </Badge>
-                </div>
-
-                {/* Amount */}
-                <div className="flex justify-between">
-                  <span className="flex items-center gap-2 font-medium">
-                    <CreditCard className="h-4 w-4" />
-                    Amount Paid
-                  </span>
-                  <span className="font-semibold">
-                    Rs. {membership.amount.toFixed(2)}
-                  </span>
-                </div>
-
-                {/* Payment Method */}
-                {membership.payment_method && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Method</span>
-                    <span className="capitalize">
-                      {membership.payment_method.replace('_', ' ')}
-                    </span>
-                  </div>
+                {row.original.membership.qr_url && (
+                  <Image
+                    src={`${process.env.API_URL_PREFIX}${row.original.membership.qr_url}`}
+                    alt="QR"
+                    width={100}
+                    height={100}
+                    className="size-16 scale-110"
+                  />
                 )}
+              </div>
 
-                <Separator />
-                {/* Dates */}
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Start Date
-                    </span>
-                    <span>
-                      {new Date(membership.start_date).toLocaleDateString()}
-                    </span>
+              {/* Content */}
+              <div className="relative z-10 flex h-auto gap-2 bg-white p-2 text-black">
+                {/* Member Table */}
+                <div className="flex h-max flex-1 flex-col gap-3 p-2 text-lg">
+                  <div className="flex">
+                    ID: NWL-<span>{row.original.id}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      End Date
-                    </span>
-                    <span
-                      className={isExpired ? 'font-medium text-red-600' : ''}
-                    >
-                      {new Date(membership.end_date).toLocaleDateString()}
-                    </span>
+                  <div className="flex gap-2">
+                    <span className="w-[100px]">Name</span>
+                    <p className="flex-1 border-b-2 border-black">
+                      {row.original.first_name} {row.original.last_name}
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      Days Remaining
-                    </span>
-                    <span
-                      className={
-                        membership.days_remaining <= 7
-                          ? 'font-bold text-orange-600'
-                          : ''
-                      }
-                    >
-                      {membership.days_remaining} days
-                    </span>
+                  <div className="flex gap-2">
+                    <span className="w-[100px]">CNIC</span>
+                    <p className="flex-1 border-b-2 border-black">
+                      {row.original.cnic}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="w-[100px]">Issue Date</span>
+                    <p className="flex-1 border-b-2 border-black">
+                      {row.original.membership.issued_date.split('T')[0]}
+                    </p>
                   </div>
                 </div>
-
-                <Separator />
-
-                {/* Issued Date */}
-                <div className="flex justify-between">
-                  <div className="text-muted-foreground text-xs">
-                    Issued on{' '}
-                    {new Date(membership.issued_date).toLocaleDateString()}
-                  </div>
-                  {/* <PDFDownloadLink
-                    document={<MembershipCardPDF member={row.original} />}
-                    fileName={`membership-card-${row.original.first_name}-${row.original.id}.pdf`}
-                  >
-                    {({ loading }) => (
-                      <Button size="icon" className="" disabled={loading}>
-                        {loading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </PDFDownloadLink> */}
+                {/* Photo Section */}
+                <div className="flex flex-shrink-0 flex-col items-center justify-start">
+                  <Image
+                    src={`${process.env.API_URL_PREFIX}${row.original.photo}`}
+                    alt="Member Photo"
+                    className="mb-1 h-[160px] w-[130px] rounded-md object-cover"
+                    width={300}
+                    height={300}
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </PopoverContent>
-        </Popover>
+              </div>
+
+              <div className="w-full text-center text-xs text-black">
+                www.elibrary.punjab.gov.pk
+              </div>
+
+              {/* Footer */}
+            </div>
+
+            <Button variant={'secondary'}>
+              <IconDownload />
+              Download
+            </Button>
+          </DialogContent>
+        </Dialog>
       )
     },
   },
@@ -360,7 +343,59 @@ const columns: ColumnDef<Member>[] = [
 
   {
     id: 'actions',
-    cell: () => (
+    cell: ({ row }) => {
+      const member = row.original
+      return <Actions member={member} />
+    },
+  },
+]
+
+const Actions = ({ member }: { member: any }) => {
+  const [open, setOpen] = React.useState(false)
+  const [deleteModel, setOpenDeleteModal] = React.useState(false)
+  const { data: session }: any = useSession()
+  const queryClient = useQueryClient()
+
+  const handleDelete = async () => {
+    const token = session?.user?.access
+    try {
+      const res = await axios.delete(`/api/user/update/${member.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (res.status === 200) {
+        toast.success('Member deleted successfully!')
+        setOpenDeleteModal(false)
+      }
+    } catch (error) {
+      console.error('Proxy error (user delete):', error)
+    } finally {
+      queryClient.refetchQueries({ queryKey: ['members'] })
+    }
+  }
+
+  return (
+    <>
+      <UpdateUserForm member={member} open={open} setOpen={setOpen} />
+
+      <AlertDialog open={deleteModel} onOpenChange={setOpenDeleteModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this
+              row.original.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -373,20 +408,26 @@ const columns: ColumnDef<Member>[] = [
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Make a copy</DropdownMenuItem>
-          <DropdownMenuItem>Favorite</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setOpen(true)}>
+            Edit
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            variant="destructive"
+            onSelect={() => setOpenDeleteModal(true)}
+          >
+            Delete
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    ),
-  },
-]
+    </>
+  )
+}
 
 export function MembersDataTable() {
   // Live data from Zustand — updates instantly!
   const members = useMemberStore((state) => state.members)
+  const [editingMember, setEditingMember] = React.useState<Member | null>(null)
 
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -435,7 +476,7 @@ export function MembersDataTable() {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
@@ -662,7 +703,7 @@ export function MembersDataTable() {
 //               </ChartContainer>
 //               <Separator />
 //               <div className="grid gap-2">
-//                 <div className="flex gap-2 leading-none font-medium">
+//                 <div className="grid grid-cols-2 leading-none font-medium">
 //                   Trending up by 5.2% this month{' '}
 //                   <IconTrendingUp className="size-4" />
 //                 </div>

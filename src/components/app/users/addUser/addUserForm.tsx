@@ -47,21 +47,65 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import axios from 'axios'
-import { Card } from '@/components/ui/card'
+import { SearchableSelect } from '@/components/ui/search-select'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { IconSettings } from '@tabler/icons-react'
+import { CardTitle } from '@/components/ui/card'
 
-const addUserSchema = z.object({
+const categoryOptions = [
+  { label: 'Student', value: 'student' },
+  { label: 'Teacher', value: 'teacher' },
+  { label: 'Researcher', value: 'researcher' },
+  { label: 'Senior Citizen', value: 'senior_citizen' },
+  { label: 'House Wife', value: 'house_wife' },
+  { label: 'Business Person', value: 'business_person' },
+  { label: 'Govt. Employee', value: 'govt_employee' },
+  { label: 'Private Employee', value: 'private_employee' },
+  { label: 'Farmer', value: 'farmer' },
+  { label: 'Shopkeeper', value: 'shopkeeper' },
+  { label: 'Industrialist', value: 'industrialist' },
+  { label: 'Craftsmen', value: 'craftsmen' },
+  { label: 'Sportsmen', value: 'sportsmen' },
+  { label: 'Men of Letters', value: 'men_of_letters' },
+  { label: 'Artist', value: 'artist' },
+  { label: 'Social Worker', value: 'social_worker' },
+  { label: 'Public Representative', value: 'public_representative' },
+  { label: 'Professional', value: 'professional' },
+  { label: 'Special Person', value: 'special_person' },
+]
+
+const ageGroupOptions = [
+  { label: 'Less than 10 years', value: '<10' },
+  { label: '10–15 years', value: '10-15' },
+  { label: '16–25 years', value: '16-25' },
+  { label: '26–35 years', value: '26-35' },
+  { label: '36–45 years', value: '36-45' },
+  { label: '46–60 years', value: '46-60' },
+  { label: '61 years and above', value: '61+' },
+]
+
+export const addUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   username: z.string().min(3, 'Username must be at least 3 characters'),
   first_name: z.string().min(2, 'First name must be at least 2 characters'),
   last_name: z.string().min(2, 'Last name must be at least 2 characters'),
-  phone_no: z.string().min(10, 'Phone number must be at least 10 digits'),
+  phone_no: z
+    .string()
+    .regex(/^(\+92|0)?3\d{9}$/, 'Invalid phone number (e.g. 03XXXXXXXXX)'),
+  category: z.string().min(1, 'Category is required'),
+  age_group: z.string().min(1, 'Age group is required'),
+  gender: z.enum(['male', 'female']).optional(),
+  cnic: z
+    .string()
+    .regex(/^\d{5}-\d{7}-\d$/, 'CNIC must be in xxxxx-xxxxxxx-x format'),
   city: z.string().min(2, 'City is required'),
   address: z.string().min(5, 'Address is required'),
   country: z.string().min(2, 'Country is required'),
-  gender: z.string().optional(),
-  cnic: z.string().min(13, 'CNIC is required'),
 })
-
 type AddUserFormValues = z.infer<typeof addUserSchema>
 
 export default function AddUserForm() {
@@ -92,7 +136,9 @@ export default function AddUserForm() {
     'Enter phone IP and connect...'
   )
   const [isProcessing, setIsProcessing] = useState(false)
-  const [streamUrl, setStreamUrl] = useState('')
+
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
   const form = useForm<AddUserFormValues>({
     resolver: zodResolver(addUserSchema),
@@ -105,23 +151,33 @@ export default function AddUserForm() {
       city: '',
       address: '',
       country: 'Pakistan',
-      gender: '',
+      gender: 'male',
       cnic: '',
     },
   })
 
-  const startCamera = async () => {
+  const loadVideoDevices = async () => {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const cams = devices.filter((d) => d.kind === 'videoinput')
+    setVideoDevices(cams)
+
+    // auto-select first camera
+    if (cams.length && !selectedDeviceId) {
+      setSelectedDeviceId(cams[0].deviceId)
+    }
+  }
+
+  const startCamera = async (deviceId?: string) => {
     try {
-      const devices = await navigator.mediaDevices.enumerateDevices()
-      const videoDevices = devices.filter((d) => d.kind === 'videoinput')
-
-      const camera = videoDevices.filter((d) => d.kind === 'videoinput')[0]
-
-      const phoneCam = camera
+      // stop previous stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          deviceId: phoneCam ? { exact: phoneCam.deviceId } : undefined,
+          deviceId: deviceId ? { exact: deviceId } : undefined,
           width: { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30 },
@@ -138,7 +194,7 @@ export default function AddUserForm() {
       setStatus('Camera ready! Look straight at the camera')
     } catch (err) {
       console.error(err)
-      setStatus('Camera not available')
+      setStatus('Failed to access camera')
     }
   }
 
@@ -166,13 +222,19 @@ export default function AddUserForm() {
 
   useEffect(() => {
     if (registered.tab === 'scan_image' && open) {
-      startCamera()
+      loadVideoDevices()
+
+      if (selectedDeviceId) {
+        startCamera(selectedDeviceId)
+      }
     } else {
       stopCamera()
     }
 
-    return () => stopCamera()
-  }, [registered.tab, open])
+    return () => {
+      stopCamera()
+    }
+  }, [registered.tab, open, selectedDeviceId])
 
   async function onSubmit(values: AddUserFormValues) {
     const token = session?.user?.access
@@ -208,10 +270,6 @@ export default function AddUserForm() {
       queryClient.refetchQueries({ queryKey: ['members'] })
     }
   }
-
-  // capture and send image
-
-  // Update stream when IP changes
 
   const captureAndSend = async () => {
     if (!videoRef.current || isProcessing) return
@@ -268,6 +326,12 @@ export default function AddUserForm() {
 
     setIsProcessing(false)
   }
+
+  useEffect(() => {
+    if (registered.tab === 'scan_image' && open && selectedDeviceId) {
+      startCamera(selectedDeviceId)
+    }
+  }, [selectedDeviceId, registered.tab, open])
 
   return (
     <Dialog
@@ -329,154 +393,49 @@ export default function AddUserForm() {
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-6"
                 >
-                  <div className="grid gap-4">
-                    {/* Username & Email */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="username"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Username</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Autogenerated"
-                                readOnly
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                              <Input type="email" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {/* First & Last Name */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="first_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>First Name</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="last_name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Last Name</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {/* Phone & Gender */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="phone_no"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Phone</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="gender"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Gender</FormLabel>
-                            <Select
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                            >
-                              <FormControl>
-                                <SelectTrigger className="h-10! w-full">
-                                  <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {/* City & Country */}
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="city"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>City</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="country"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Country</FormLabel>
-                            <FormControl>
-                              <Input {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {/* CNIC */}
+                  {/* Username & Email */}
+                  <div className="grid gap-4 md:grid-cols-2">
                     <FormField
                       control={form.control}
-                      name="cnic"
+                      name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>CNIC</FormLabel>
+                          <FormLabel>Username</FormLabel>
+                          <FormControl>
+                            <Input
+                              readOnly
+                              placeholder="Auto generated"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input type="email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* First & Last Name */}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="first_name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>First Name</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -485,13 +444,12 @@ export default function AddUserForm() {
                       )}
                     />
 
-                    {/* Address */}
                     <FormField
                       control={form.control}
-                      name="address"
+                      name="last_name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Address</FormLabel>
+                          <FormLabel>Last Name</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>
@@ -501,14 +459,155 @@ export default function AddUserForm() {
                     />
                   </div>
 
+                  {/* Phone & Gender */}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="phone_no"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone</FormLabel>
+                          <FormControl>
+                            <Input placeholder="03XXXXXXXXX" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gender</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="h-10! w-full">
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Category & Age Group */}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <SearchableSelect
+                            value={field.value}
+                            onChange={field.onChange}
+                            options={categoryOptions}
+                            placeholder="Select category"
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="age_group"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Age Group</FormLabel>
+                          <SearchableSelect
+                            value={field.value}
+                            onChange={field.onChange}
+                            options={ageGroupOptions}
+                            placeholder="Select age group"
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* City & Country (INPUT) */}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="country"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Country</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Pakistan" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* CNIC */}
+                  <FormField
+                    control={form.control}
+                    name="cnic"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>CNIC</FormLabel>
+                        <FormControl>
+                          <Input placeholder="xxxxx-xxxxxxx-x" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Address */}
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mailing Address</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Footer */}
                   <DialogFooter>
                     <DialogClose asChild>
-                      <Button variant={'outline'} size={'lg'}>
+                      <Button variant="outline" size="lg">
                         Close
                       </Button>
                     </DialogClose>
 
-                    <Button type="submit" size={'lg'}>
+                    <Button type="submit" size="lg">
                       {loading ? 'Adding...' : 'Add Member'}
                     </Button>
                   </DialogFooter>
@@ -516,7 +615,28 @@ export default function AddUserForm() {
               </Form>
             ) : registered.tab === 'scan_image' ? (
               <div className="flex flex-col gap-4">
-                <div className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl bg-black shadow-2xl">
+                {videoDevices.length > 0 && (
+                  <Select
+                    value={selectedDeviceId ?? ''}
+                    onValueChange={(value) => setSelectedDeviceId(value)}
+                  >
+                    <SelectTrigger className="h-10! w-full rounded-full">
+                      <SelectValue placeholder="Select camera" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {videoDevices.map((device, index) => (
+                        <SelectItem
+                          key={device.deviceId}
+                          value={device.deviceId}
+                        >
+                          {device.label || `Camera ${index + 1}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <div className="relative mx-auto min-h-96 max-w-2xl overflow-hidden rounded-3xl bg-black shadow-2xl">
                   <video
                     ref={videoRef}
                     autoPlay
@@ -527,7 +647,7 @@ export default function AddUserForm() {
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div className="h-92 w-72 rounded-[40%] border-4 border-dashed border-green-400 opacity-60" />{' '}
                   </div>
-                  <div className="bg-opacity-70 absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-black px-6 py-3 text-lg font-medium text-white">
+                  <div className="bg-opacity-70 absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-black px-6 py-3 text-center text-sm font-medium text-white md:text-base">
                     Align face in oval
                   </div>
                 </div>{' '}

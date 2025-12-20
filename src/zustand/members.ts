@@ -12,21 +12,53 @@ export interface Member {
   first_name: string
   last_name: string
   phone_no: string
-  photo: string | undefined
+  gender: 'male' | 'female' | null
+  category:
+    | 'student'
+    | 'teacher'
+    | 'researcher'
+    | 'senior_citizen'
+    | 'house_wife'
+    | 'business_person'
+    | 'govt_employee'
+    | 'private_employee'
+    | 'farmer'
+    | 'shopkeeper'
+    | 'industrialist'
+    | 'craftsmen'
+    | 'sportsmen'
+    | 'men_of_letters'
+    | 'artist'
+    | 'social_worker'
+    | 'public_representative'
+    | 'professional'
+    | 'special_person'
+    | null
+  age_group:
+    | '<10'
+    | '10-15'
+    | '16-25'
+    | '26-35'
+    | '36-45'
+    | '46-60'
+    | '61+'
+    | null
   city: string | null
   address: string | null
   country: string | null
-  timezone: string
-  about: string | null
-  is_email_verified: boolean
-  fingerprint_template: string | null
+  cnic: string | null
+  photo: string | undefined
   cnic_front: string | File | null
   cnic_back: string | File | null
-  role: UserRole
+  about: string | null
+  libraries: any[] // could define Library interface if needed
+  role: 'super_admin' | 'admin' | 'member'
+  is_email_verified: boolean
   is_active: boolean
   is_staff: boolean
   otp: string | null
   created_at: string
+  fingerprint_template: string | null
   membership: any
 }
 
