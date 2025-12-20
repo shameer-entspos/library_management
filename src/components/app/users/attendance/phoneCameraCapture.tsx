@@ -50,19 +50,57 @@ export default function FaceAttendance() {
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
+  // const loadVideoDevices = async () => {
+  //   const devices = await navigator.mediaDevices.enumerateDevices()
+  //   console.log(devices)
+  //   const cams = devices.filter((d) => d.kind === 'videoinput')
+  //   setVideoDevices(cams)
+
+  //   // auto-select first camera
+  //   if (cams.length && !selectedDeviceId) {
+  //     setSelectedDeviceId(cams[0].deviceId)
+  //   }
+  // }
+
   const loadVideoDevices = async () => {
     const devices = await navigator.mediaDevices.enumerateDevices()
-    console.log(devices)
-    const cams = devices.filter((d) => d.kind === 'videoinput')
-    setVideoDevices(cams)
-
-    // auto-select first camera
-    if (cams.length && !selectedDeviceId) {
-      setSelectedDeviceId(cams[0].deviceId)
-    }
+    setVideoDevices(devices.filter((d) => d.kind === 'videoinput'))
   }
 
-  const startCamera = async (deviceId?: string) => {
+  // const startCamera = async (deviceId?: string) => {
+  //   try {
+  //     // stop previous stream
+  //     if (streamRef.current) {
+  //       streamRef.current.getTracks().forEach((t) => t.stop())
+  //       streamRef.current = null
+  //     }
+
+  //     const stream = await navigator.mediaDevices.getUserMedia({
+  //       video: {
+  //         deviceId: deviceId ? { exact: deviceId } : undefined,
+  //         width: { ideal: 1280 },
+  //         height: { ideal: 720 },
+  //         frameRate: { ideal: 30 },
+  //       },
+  //     })
+
+  //     streamRef.current = stream
+
+  //     if (videoRef.current) {
+  //       videoRef.current.srcObject = stream
+  //       await videoRef.current.play()
+  //     }
+
+  //     setCameraState('ready')
+  //     setStatus('Camera ready! Look straight at the camera')
+  //   } catch (err) {
+  //     console.error(err)
+  //     setCameraState('error')
+  //     setStatus('Failed to access camera')
+  //   }
+  // }
+
+  const startCamera = async () => {
     try {
       // stop previous stream
       if (streamRef.current) {
@@ -70,13 +108,9 @@ export default function FaceAttendance() {
         streamRef.current = null
       }
 
+      // IMPORTANT: no deviceId at all
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          deviceId: deviceId ? { exact: deviceId } : undefined,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 },
-        },
+        video: true,
       })
 
       streamRef.current = stream
@@ -88,15 +122,32 @@ export default function FaceAttendance() {
 
       setCameraState('ready')
       setStatus('Camera ready! Look straight at the camera')
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setCameraState('error')
-      setStatus('Failed to access camera')
+
+      if (err.name === 'NotAllowedError') {
+        setCameraState('denied')
+        setStatus('Camera permission denied')
+      } else {
+        setCameraState('error')
+        setStatus('Camera not available')
+      }
     }
   }
 
+  // useEffect(() => {
+  //   loadVideoDevices()
+
+  //   return () => {
+  //     if (streamRef.current) {
+  //       streamRef.current.getTracks().forEach((t) => t.stop())
+  //       streamRef.current = null
+  //     }
+  //   }
+  // }, [])
+
   useEffect(() => {
-    loadVideoDevices()
+    startCamera()
 
     return () => {
       if (streamRef.current) {
@@ -195,12 +246,6 @@ export default function FaceAttendance() {
 
     setIsProcessing(false)
   }
-
-  useEffect(() => {
-    if (selectedDeviceId) {
-      startCamera(selectedDeviceId)
-    }
-  }, [selectedDeviceId])
 
   return (
     <>
