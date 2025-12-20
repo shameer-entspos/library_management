@@ -52,6 +52,7 @@ export default function FaceAttendance() {
 
   const loadVideoDevices = async () => {
     const devices = await navigator.mediaDevices.enumerateDevices()
+    console.log(devices)
     const cams = devices.filter((d) => d.kind === 'videoinput')
     setVideoDevices(cams)
 
