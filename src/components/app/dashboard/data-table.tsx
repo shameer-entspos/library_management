@@ -100,7 +100,9 @@ const columns: ColumnDef<Member>[] = [
     cell: ({ row }) => (
       <Avatar className="size-10">
         <AvatarImage
-          src={row.original.photo || undefined}
+          src={
+            `${process.env.API_URL_PREFIX}${row.original.photo}` || undefined
+          }
           alt={`${row.original.first_name} ${row.original.last_name}`}
           className="object-cover"
         />
@@ -467,7 +469,7 @@ export function MembersDataTable() {
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="dark:bg-input/20 rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

@@ -12,110 +12,56 @@ import {
 
 export function SectionCards() {
   return (
-    <div className="*:data-[slot=card]:from-primary/20 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+    <div className="*:data-[slot=card]:from-primary/20 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-3 px-4 *:data-[slot=card]:bg-gradient-to-t sm:gap-4 lg:px-6 @sm/main:grid-cols-2 @5xl/main:grid-cols-4">
+      {/* Total Users */}
       <Card
-        className="@container/card border-none"
-        style={{
-          boxShadow: '0px 0px 10px 0px #88888820',
-        }}
+        className="@container/card border-none py-4 sm:py-6!"
+        style={{ boxShadow: '0px 0px 10px 0px #88888820' }}
       >
-        <CardHeader>
-          <CardDescription>Total Revenue</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            $1,250.00
+        <CardHeader className="px-4 sm:px-6">
+          <CardDescription>Total Users</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums md:text-3xl lg:text-4xl">
+            1,250
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              +12.5%
-            </Badge>
-          </CardAction>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Trending up this month <IconTrendingUp className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Visitors for the last 6 months
-          </div>
-        </CardFooter>
       </Card>
+
+      {/* Active Memberships */}
       <Card
-        className="@container/card border-none"
-        style={{
-          boxShadow: '0px 0px 10px 0px #88888820',
-        }}
+        className="@container/card border-none py-4 sm:py-6!"
+        style={{ boxShadow: '0px 0px 10px 0px #88888820' }}
       >
-        <CardHeader>
-          <CardDescription>New Customers</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            1,234
+        <CardHeader className="px-4 sm:px-6">
+          <CardDescription>Active Memberships</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums md:text-3xl lg:text-4xl">
+            980
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingDown />
-              -20%
-            </Badge>
-          </CardAction>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Down 20% this period <IconTrendingDown className="size-4" />
-          </div>
-          <div className="text-muted-foreground">
-            Acquisition needs attention
-          </div>
-        </CardFooter>
       </Card>
+
+      {/* Today's Attendance */}
       <Card
-        className="@container/card border-none"
-        style={{
-          boxShadow: '0px 0px 10px 0px #88888820',
-        }}
+        className="@container/card border-none py-4 sm:py-6!"
+        style={{ boxShadow: '0px 0px 10px 0px #88888820' }}
       >
-        <CardHeader>
-          <CardDescription>Active Accounts</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            45,678
+        <CardHeader className="px-4 sm:px-6">
+          <CardDescription>Today&apos;s Attendance</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums md:text-3xl lg:text-4xl">
+            142
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              +12.5%
-            </Badge>
-          </CardAction>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Strong user retention <IconTrendingUp className="size-4" />
-          </div>
-          <div className="text-muted-foreground">Engagement exceed targets</div>
-        </CardFooter>
       </Card>
+
       <Card
-        className="@container/card border-none"
-        style={{
-          boxShadow: '0px 0px 10px 0px #88888820',
-        }}
+        className="@container/card border-none py-4 sm:py-6!"
+        style={{ boxShadow: '0px 0px 10px 0px #88888820' }}
       >
-        <CardHeader>
-          <CardDescription>Growth Rate</CardDescription>
-          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            4.5%
+        <CardHeader className="px-4 sm:px-6">
+          <CardDescription>Library Growth Rate</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums md:text-3xl lg:text-4xl">
+            5.2%
           </CardTitle>
-          <CardAction>
-            <Badge variant="outline">
-              <IconTrendingUp />
-              +4.5%
-            </Badge>
-          </CardAction>
         </CardHeader>
-        <CardFooter className="flex-col items-start gap-1.5 text-sm">
-          <div className="line-clamp-1 flex gap-2 font-medium">
-            Steady performance increase <IconTrendingUp className="size-4" />
-          </div>
-          <div className="text-muted-foreground">Meets growth projections</div>
-        </CardFooter>
       </Card>
     </div>
   )

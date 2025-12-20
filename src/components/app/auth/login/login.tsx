@@ -25,9 +25,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { useState } from 'react'
-import { loginAPI } from '@/lib/api'
+import { getUserProfileDataAPI, loginAPI } from '@/lib/api'
 import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
+import axios from 'axios'
+import { useProfile } from '@/zustand/profile'
 
 const loginFormSchema = z.object({
   email: z.string().email(),
@@ -38,6 +40,7 @@ const formSchema = loginFormSchema
 
 export default function LoginPreview() {
   const [isLoading, setIsLoading] = useState(false)
+  const { profile, setUserProfile } = useProfile()
   const [accountRecovery, setAccountRecovery] = useState<{
     show: boolean
     message: string
@@ -63,29 +66,43 @@ export default function LoginPreview() {
         })
       } else if (response.status === 200) {
         const { access, refresh } = response.data
-        // const res = await getUserProfileDataAPI(response.data.access)
-
-        // if (res.status === 200) {
-        const loginRes = await signIn('credentials', {
-          email: data.email,
-          access: access,
-          refresh: refresh,
-          role: 'admin',
-          redirect: false,
+        const res = await axios.get('/api/user/profile', {
+          headers: {
+            Authorization: `Bearer ${access}`,
+          },
         })
-        if (loginRes?.error) {
-          toast.error(loginRes.error)
-          return
+
+        if (res.status === 200) {
+          console.log(res.data)
+          const user = res.data
+
+          if (user.role == 'member') {
+            toast.error('You are not allowed to login as a member')
+            return
+          }
+
+          const loginRes = await signIn('credentials', {
+            email: data.email,
+            access: access,
+            refresh: refresh,
+            role: user.role,
+            redirect: false,
+          })
+
+          setUserProfile(user)
+          if (loginRes?.error) {
+            toast.error(loginRes.error)
+            return
+          }
+          if (loginRes?.ok) {
+            toast.success('Login successful!')
+            router.push('/')
+          }
         }
-        if (loginRes?.ok) {
-          toast.success('Login successful!')
-          router.push('/')
-        }
-        // }
       }
     } catch (error: any) {
       console.log(error?.response)
-      toast.error(`Login Error '${error?.response?.data?.message}'`)
+      toast.error(`Login Error ${error?.response?.data?.message ?? ''}`)
     } finally {
       setIsLoading(false)
     }
@@ -160,12 +177,12 @@ export default function LoginPreview() {
             </form>
           </Form>
 
-          <div className="mt-4 text-center text-sm">
+          {/* <div className="mt-4 text-center text-sm">
             Not a member?{' '}
             <Link href="/register" className="underline">
               Register
             </Link>
-          </div>
+          </div> */}
         </CardContent>
       </div>
     </div>

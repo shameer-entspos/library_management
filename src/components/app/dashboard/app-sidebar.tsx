@@ -4,6 +4,7 @@ import * as React from 'react'
 import {
   IconCamera,
   IconChartBar,
+  IconClockHour11,
   IconDashboard,
   IconDatabase,
   IconFileAi,
@@ -28,6 +29,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
+import { Clock1 } from 'lucide-react'
 
 const data = {
   user: {
@@ -51,16 +53,11 @@ const data = {
       url: '/attendances',
       icon: IconListDetails,
     },
-    // {
-    //   title: 'Projects',
-    //   url: '#',
-    //   icon: IconFolder,
-    // },
-    // {
-    //   title: 'Team',
-    //   url: '#',
-    //   icon: IconUsers,
-    // },
+    {
+      title: 'Checkin/Checkout',
+      url: '/checkin-checkout',
+      icon: IconClockHour11,
+    },
   ],
   navClouds: [
     {
@@ -113,7 +110,7 @@ const data = {
   navSecondary: [
     {
       title: 'Settings',
-      url: '#',
+      url: '/settings',
       icon: IconSettings,
     },
   ],

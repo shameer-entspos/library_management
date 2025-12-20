@@ -115,9 +115,9 @@ export default function AddUserForm() {
       const devices = await navigator.mediaDevices.enumerateDevices()
       const videoDevices = devices.filter((d) => d.kind === 'videoinput')
 
-      const phoneCam = videoDevices.find((d) =>
-        /droidcam|iriun|android|phone/i.test(d.label)
-      )
+      const camera = videoDevices.filter((d) => d.kind === 'videoinput')[0]
+
+      const phoneCam = camera
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -296,7 +296,7 @@ export default function AddUserForm() {
       <DialogTrigger asChild onClick={() => setOpen(true)}>
         <Button variant="default" className="h-9! text-white">
           <Plus />
-          Add Member
+          <span className="hidden sm:inline-block">Add Member</span>
         </Button>
       </DialogTrigger>
 
@@ -525,7 +525,7 @@ export default function AddUserForm() {
                     className="w-full"
                   />
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div className="h-92 w-72 rounded-[40%] border-4 border-dashed border-red-400 opacity-60" />{' '}
+                    <div className="h-92 w-72 rounded-[40%] border-4 border-dashed border-green-400 opacity-60" />{' '}
                   </div>
                   <div className="bg-opacity-70 absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-black px-6 py-3 text-lg font-medium text-white">
                     Align face in oval
