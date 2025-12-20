@@ -1,20 +1,19 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-interface Params {
-  params: { id: string }
-}
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> } // <-- Change here
+) {
+  const { id } = await params // <-- Await the promise here
 
-export async function PUT(request: Request, params: Params) {
-  const { id } = await params.params
   try {
     const body = await request.json()
     const authHeader = request.headers.get('authorization')
 
-    // Forward the request to your backend
     const backendResponse = await fetch(
       `${process.env.API_URL_PREFIX}/api/user/update/${id}/`,
       {
-        method: 'PUT', // match the axios method
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...(authHeader && { Authorization: authHeader }),
@@ -34,8 +33,11 @@ export async function PUT(request: Request, params: Params) {
   }
 }
 
-export async function DELETE(request: Request, params: Params) {
-  const { id } = await params.params
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> } // <-- Same change here
+) {
+  const { id } = await params // <-- Await here
 
   try {
     const authHeader = request.headers.get('authorization')
