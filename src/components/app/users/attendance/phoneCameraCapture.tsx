@@ -218,20 +218,20 @@ export default function FaceAttendance() {
             </h1>
           </div>
           <div className="h-max!">
-            {videoDevices.length > 0 && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-10 w-10 sm:w-max"
-                  >
-                    <IconSettings />
-                    <span className="hidden sm:flex">Settings</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="space-y-4">
-                  <CardTitle>Change camera</CardTitle>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-10 w-10 sm:w-max"
+                >
+                  <IconSettings />
+                  <span className="hidden sm:flex">Settings</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="space-y-4">
+                <CardTitle>Change camera</CardTitle>
+                {videoDevices.length > 0 && (
                   <Select
                     value={selectedDeviceId ?? ''}
                     onValueChange={(value) => setSelectedDeviceId(value)}
@@ -251,9 +251,9 @@ export default function FaceAttendance() {
                       ))}
                     </SelectContent>
                   </Select>
-                </PopoverContent>
-              </Popover>
-            )}
+                )}
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </header>
