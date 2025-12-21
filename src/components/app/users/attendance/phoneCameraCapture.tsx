@@ -37,6 +37,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { SearchableSelect } from '@/components/ui/search-select'
+import { useMemberStore } from '@/zustand/members'
 
 type Mode = 'register' | 'checkin' | 'checkout'
 type CameraState = 'loading' | 'ready' | 'denied' | 'error'
@@ -52,6 +54,8 @@ export default function FaceAttendance() {
   const pathname = usePathname()
 
   const streamRef = useRef<MediaStream | null>(null)
+
+  const { members } = useMemberStore()
 
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
@@ -371,13 +375,15 @@ export default function FaceAttendance() {
             {/* User ID for Registration */}
             {mode === 'register' && (
               <div className="mx-auto mb-8 max-w-md">
-                <Input
-                  type="text"
-                  placeholder="Enter User ID"
+                <SearchableSelect
                   value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  className="rounded-full text-center"
-                />
+                  onChange={(value) => setUserId(value as string)}
+                  options={members.map((member) => ({
+                    value: String(member.id),
+                    label: member.first_name + ' ' + member.last_name,
+                  }))}
+                  placeholder="Select a member"
+                />{' '}
               </div>
             )}
 
