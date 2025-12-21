@@ -156,18 +156,7 @@ export default function AddUserForm() {
     },
   })
 
-  const loadVideoDevices = async () => {
-    const devices = await navigator.mediaDevices.enumerateDevices()
-    const cams = devices.filter((d) => d.kind === 'videoinput')
-    setVideoDevices(cams)
-
-    // auto-select first camera
-    if (cams.length && !selectedDeviceId) {
-      setSelectedDeviceId(cams[0].deviceId)
-    }
-  }
-
-  const startCamera = async (deviceId?: string) => {
+  const startCamera = async () => {
     try {
       // stop previous stream
       if (streamRef.current) {
@@ -175,13 +164,9 @@ export default function AddUserForm() {
         streamRef.current = null
       }
 
+      // IMPORTANT: no deviceId at all
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          deviceId: deviceId ? { exact: deviceId } : undefined,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 },
-        },
+        video: true,
       })
 
       streamRef.current = stream
@@ -192,9 +177,14 @@ export default function AddUserForm() {
       }
 
       setStatus('Camera ready! Look straight at the camera')
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
-      setStatus('Failed to access camera')
+
+      if (err.name === 'NotAllowedError') {
+        setStatus('Camera permission denied')
+      } else {
+        setStatus('Camera not available')
+      }
     }
   }
 
@@ -221,20 +211,14 @@ export default function AddUserForm() {
   }, [form])
 
   useEffect(() => {
-    if (registered.tab === 'scan_image' && open) {
-      loadVideoDevices()
-
-      if (selectedDeviceId) {
-        startCamera(selectedDeviceId)
-      }
-    } else {
-      stopCamera()
+    if (registered.tab === 'scan_image') {
+      startCamera()
     }
+  }, [registered.tab, open])
 
-    return () => {
-      stopCamera()
-    }
-  }, [registered.tab, open, selectedDeviceId])
+  useEffect(() => {
+    stopCamera()
+  }, [])
 
   async function onSubmit(values: AddUserFormValues) {
     const token = session?.user?.access
@@ -326,12 +310,6 @@ export default function AddUserForm() {
 
     setIsProcessing(false)
   }
-
-  useEffect(() => {
-    if (registered.tab === 'scan_image' && open && selectedDeviceId) {
-      startCamera(selectedDeviceId)
-    }
-  }, [selectedDeviceId, registered.tab, open])
 
   return (
     <Dialog

@@ -29,8 +29,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { IconSettings } from '@tabler/icons-react'
+import { IconMenu, IconSettings } from '@tabler/icons-react'
 import { CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 type Mode = 'register' | 'checkin' | 'checkout'
 type CameraState = 'loading' | 'ready' | 'denied' | 'error'
@@ -263,43 +269,86 @@ export default function FaceAttendance() {
               Checkin Checkout
             </h1>
           </div>
-          <div className="h-max!">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="h-10 w-10 sm:w-max"
-                >
-                  <IconSettings />
-                  <span className="hidden sm:flex">Settings</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="space-y-4">
-                <CardTitle>Change camera</CardTitle>
-                {videoDevices.length > 0 && (
-                  <Select
-                    value={selectedDeviceId ?? ''}
-                    onValueChange={(value) => setSelectedDeviceId(value)}
+          {/* <div className="h-max!">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-10 w-10 sm:w-max"
                   >
-                    <SelectTrigger className="h-10! w-full rounded-full">
-                      <SelectValue placeholder="Select camera" />
-                    </SelectTrigger>
+                    <IconSettings />
+                    <span className="hidden sm:flex">Settings</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="space-y-4">
+                  <CardTitle>Change camera</CardTitle>
+                  {videoDevices.length > 0 && (
+                    <Select
+                      value={selectedDeviceId ?? ''}
+                      onValueChange={(value) => setSelectedDeviceId(value)}
+                    >
+                      <SelectTrigger className="h-10! w-full rounded-full">
+                        <SelectValue placeholder="Select camera" />
+                      </SelectTrigger>
 
-                    <SelectContent>
-                      {videoDevices.map((device, index) => (
-                        <SelectItem
-                          key={device.deviceId}
-                          value={device.deviceId}
-                        >
-                          {device.label || `Camera ${index + 1}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </PopoverContent>
-            </Popover>
+                      <SelectContent>
+                        {videoDevices.map((device, index) => (
+                          <SelectItem
+                            key={device.deviceId}
+                            value={device.deviceId}
+                          >
+                            {device.label || `Camera ${index + 1}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </PopoverContent>
+              </Popover>
+            </div> */}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="secondary" className="lg:hidden">
+                <IconMenu />
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => setMode('register')}>
+                <UserPlus className="size-4" /> Register Face
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setMode('checkin')}>
+                <CheckCircle className="size-4" /> Checkin/Checkout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="hidden flex-wrap justify-center gap-4 lg:flex">
+            <Button
+              onClick={() => setMode('register')}
+              className="rounded-full text-sm!"
+              size={'sm'}
+              variant={mode === 'register' ? 'default' : 'secondary'}
+            >
+              <UserPlus className="size-4" /> Register Face
+            </Button>
+            <Button
+              onClick={() => setMode('checkin')}
+              className="rounded-full text-sm!"
+              size={'sm'}
+              variant={mode === 'checkin' ? 'default' : 'secondary'}
+            >
+              <CheckCircle className="size-4" /> Checkin/Checkout
+            </Button>
+            {/* <Button
+            onClick={() => setMode('checkout')}
+            className="rounded-full text-sm! px-5!"
+            variant={mode === 'checkout' ? 'default' : 'secondary'}
+          >
+            <UserCheck className="h-6 w-6" /> Check Out
+          </Button> */}
           </div>
         </div>
       </header>
@@ -318,31 +367,6 @@ export default function FaceAttendance() {
         </div> */}
 
             {/* Mode Selector */}
-            <div className="flex flex-wrap justify-center gap-4">
-              <Button
-                onClick={() => setMode('register')}
-                className="rounded-full text-sm!"
-                size={'sm'}
-                variant={mode === 'register' ? 'default' : 'secondary'}
-              >
-                <UserPlus className="size-4" /> Register Face
-              </Button>
-              <Button
-                onClick={() => setMode('checkin')}
-                className="rounded-full text-sm!"
-                size={'sm'}
-                variant={mode === 'checkin' ? 'default' : 'secondary'}
-              >
-                <CheckCircle className="size-4" /> Checkin/Checkout
-              </Button>
-              {/* <Button
-            onClick={() => setMode('checkout')}
-            className="rounded-full text-sm! px-5!"
-            variant={mode === 'checkout' ? 'default' : 'secondary'}
-          >
-            <UserCheck className="h-6 w-6" /> Check Out
-          </Button> */}
-            </div>
 
             {/* User ID for Registration */}
             {mode === 'register' && (
@@ -361,13 +385,13 @@ export default function FaceAttendance() {
 
             {/* {cameraState === 'ready' && (
         )} */}
-            <div className="relative mx-auto min-h-96 w-full overflow-hidden rounded-3xl bg-black shadow-2xl">
+            <div className="relative mx-auto min-h-96 max-w-2xl overflow-hidden rounded-3xl bg-black shadow-2xl">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className="h-full w-full object-cover"
+                className="h-96 w-full object-cover md:h-full"
               />
               <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                 <div className="h-92 w-72 rounded-[40%] border-4 border-dashed border-green-400 opacity-60"></div>

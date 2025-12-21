@@ -1,9 +1,8 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   ColumnDef,
-  ColumnFiltersState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
@@ -12,6 +11,7 @@ import {
   SortingState,
   useReactTable,
   VisibilityState,
+  ColumnFiltersState,
 } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,18 +22,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import axios from 'axios'
-import { Columns, EllipsisVertical, Loader2, Search } from 'lucide-react'
+import { Columns, Loader2, Search } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-
 import {
   Select,
   SelectContent,
@@ -48,78 +44,104 @@ import {
   IconChevronsRight,
 } from '@tabler/icons-react'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { useMemberStore } from '@/zustand/members'
 
 export type AttendanceRow = {
   id: number
-  user_name: string
   check_in: string
   check_out: string | null
-  time_spent: string
   method: string
 }
 
-export const columns: ColumnDef<AttendanceRow>[] = [
+export type MemberRow = {
+  id: number
+  name: string
+  email: string
+  attendances: AttendanceRow[]
+}
+
+// Helper function moved outside component
+const getFirstAttendance = (attendances: AttendanceRow[]) => {
+  if (!attendances || attendances.length === 0) return null
+  return [...attendances].sort(
+    (a, b) => new Date(a.check_in).getTime() - new Date(b.check_in).getTime()
+  )[0]
+}
+
+// Columns now use useMemo and reference the helper safely
+const columns: ColumnDef<any>[] = [
   {
-    accessorKey: 'user_name',
+    accessorKey: 'name',
     header: 'Name',
-    cell: ({ row }) => (
-      <span className="capitalize">{row.original.user_name}</span>
-    ),
+    cell: ({ row }) => <span className="capitalize">{row.original.name}</span>,
   },
   {
-    accessorKey: 'check_in',
-    header: 'Check In',
+    id: 'first_check_in',
+    header: 'First Check In',
+    cell: ({ row }) => {
+      const first = getFirstAttendance(row.original.attendances)
+      return first ? new Date(first.check_in).toLocaleString() : '—'
+    },
   },
   {
-    accessorKey: 'check_out',
-    header: 'Check Out',
-    cell: ({ row }) => row.original.check_out ?? '—',
+    id: 'first_check_out',
+    header: 'First Check Out',
+    cell: ({ row }) => {
+      const first = getFirstAttendance(row.original.attendances)
+      return first?.check_out ? new Date(first.check_out).toLocaleString() : '—'
+    },
   },
   {
-    accessorKey: 'time_spent',
-    header: 'Time Spent',
-    cell: ({ row }) => row.original.time_spent || '—',
+    id: 'attendance_count',
+    header: 'Attendances',
+    cell: ({ row }) => row.original.attendances.length,
   },
   {
     id: 'actions',
-    header: 'Actions',
+    header: 'History',
     cell: ({ row }) => (
-      <Button
-        size="icon"
-        variant="ghost"
-        onClick={() => console.log('Attendance ID:', row.original.id)}
-      >
-        <EllipsisVertical />
-      </Button>
+      <AttendanceDialog
+        name={row.original.name}
+        attendances={row.original.attendances}
+      />
     ),
   },
 ]
 
 const AttendanceList = () => {
-  const [data, setData] = useState<AttendanceRow[]>([])
-  const [loading, setLoading] = useState(true)
-
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
 
-  /* ===== Fetch attendances ===== */
-  useEffect(() => {
-    const fetchAttendances = async () => {
-      try {
-        const res = await axios.get('/api/attendance/all/') // <-- your API
-        setData(res.data)
-      } catch (error) {
-        console.error('Failed to load attendances', error)
-      } finally {
-        setLoading(false)
-      }
-    }
+  const { members } = useMemberStore()
+  console.log(members)
 
-    fetchAttendances()
+  // Transform data once using useMemo
+  const data = useMemo(() => {
+    return members.map((m) => ({
+      id: m.id,
+      name: m.first_name + ' ' + m.last_name,
+      email: m.email,
+      attendances: m.attendances || [],
+    }))
+  }, [members])
+
+  // Simulate loading or remove if data is instantly available
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    // If you're fetching data, set loading true initially
+    // For now, since data comes from Zustand, we assume it's ready
+    setLoading(false)
   }, [])
 
   const table = useReactTable({
@@ -154,7 +176,7 @@ const AttendanceList = () => {
   }
 
   return (
-    <div className="w-full space-y-4 p-4 pt-0! lg:p-6">
+    <div className="w-full space-y-4 p-4 pt-0 lg:p-6">
       <div className="flex flex-col gap-4 sm:items-center sm:justify-between lg:flex-row">
         <div className="flex items-center gap-3">
           <div className="relative w-full">
@@ -189,11 +211,7 @@ const AttendanceList = () => {
                     }
                     className="capitalize"
                   >
-                    {column.id === 'name'
-                      ? 'Name'
-                      : column.id === 'is_email_verified'
-                        ? 'Email Verification'
-                        : column.id.replace(/_/g, ' ')}
+                    {column.columnDef.header?.toString() || column.id}
                   </DropdownMenuCheckboxItem>
                 ))}
             </DropdownMenuContent>
@@ -219,7 +237,6 @@ const AttendanceList = () => {
               </TableRow>
             ))}
           </TableHeader>
-
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
@@ -240,13 +257,15 @@ const AttendanceList = () => {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No attendances found.
+                  No members found.
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
       <div className="flex items-center justify-between px-4">
         <div className="text-muted-foreground hidden flex-1 text-sm lg:flex">
           {table.getFilteredSelectedRowModel().rows.length} of{' '}
@@ -259,14 +278,10 @@ const AttendanceList = () => {
             </Label>
             <Select
               value={`${table.getState().pagination.pageSize}`}
-              onValueChange={(value) => {
-                table.setPageSize(Number(value))
-              }}
+              onValueChange={(value) => table.setPageSize(Number(value))}
             >
               <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                <SelectValue
-                  placeholder={table.getState().pagination.pageSize}
-                />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent side="top">
                 {[10, 20, 30, 40, 50].map((pageSize) => (
@@ -288,8 +303,7 @@ const AttendanceList = () => {
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">Go to first page</span>
-              <IconChevronsLeft />
+              <IconChevronsLeft className="size-4" />
             </Button>
             <Button
               variant="outline"
@@ -298,8 +312,7 @@ const AttendanceList = () => {
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <span className="sr-only">Go to previous page</span>
-              <IconChevronLeft />
+              <IconChevronLeft className="size-4" />
             </Button>
             <Button
               variant="outline"
@@ -308,8 +321,7 @@ const AttendanceList = () => {
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">Go to next page</span>
-              <IconChevronRight />
+              <IconChevronRight className="size-4" />
             </Button>
             <Button
               variant="outline"
@@ -318,13 +330,76 @@ const AttendanceList = () => {
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
             >
-              <span className="sr-only">Go to last page</span>
-              <IconChevronsRight />
+              <IconChevronsRight className="size-4" />
             </Button>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+type Props = {
+  name: string
+  attendances: AttendanceRow[]
+}
+
+const AttendanceDialog = ({ name, attendances }: Props) => {
+  // Sort attendances by check_in descending (latest first)
+  const sortedAttendances = [...attendances].sort(
+    (a, b) => new Date(b.check_in).getTime() - new Date(a.check_in).getTime()
+  )
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">
+          View
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{name} — Attendance History</DialogTitle>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-background sticky top-0">
+              <tr className="border-b">
+                <th className="p-3 text-left font-medium">Check In</th>
+                <th className="p-3 text-left font-medium">Check Out</th>
+                <th className="p-3 text-left font-medium">Method</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedAttendances.length > 0 ? (
+                sortedAttendances.map((a) => (
+                  <tr key={a.id} className="border-b">
+                    <td className="p-3">
+                      {new Date(a.check_in).toLocaleString()}
+                    </td>
+                    <td className="p-3">
+                      {a.check_out
+                        ? new Date(a.check_out).toLocaleString()
+                        : '—'}
+                    </td>
+                    <td className="p-3 capitalize">{a.method}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="text-muted-foreground p-8 text-center"
+                  >
+                    No attendance history
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 

@@ -60,6 +60,7 @@ export interface Member {
   created_at: string
   fingerprint_template: string | null
   membership: any
+  attendances: any
 }
 
 interface MemberStore {
