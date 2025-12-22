@@ -92,6 +92,7 @@ import {
   DialogContent,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import Link from 'next/link'
 
 // Define columns using your actual Member type
 const columns: ColumnDef<Member>[] = [
@@ -322,7 +323,7 @@ const columns: ColumnDef<Member>[] = [
 
               {/* Footer */}
             </div>
-            <a
+            <Link
               href={`${process.env.API_URL_PREFIX}/api/user/memberships/card/${row.original.membership?.id}/`}
               target="_blank"
             >
@@ -330,7 +331,7 @@ const columns: ColumnDef<Member>[] = [
                 <IconDownload />
                 Download
               </Button>
-            </a>
+            </Link>
           </DialogContent>
         </Dialog>
       )
