@@ -249,7 +249,7 @@ const columns: ColumnDef<Member>[] = [
 
           {/* Dialog Content */}
           <DialogContent className="w-[90vw] max-w-3xl p-4">
-            <div className="w-full overflow-hidden rounded-2xl bg-white">
+            <div className="w-full overflow-hidden rounded-2xl border bg-white">
               {/* Header */}
               <div className="relative z-10 flex items-center justify-between bg-white p-2">
                 <Image

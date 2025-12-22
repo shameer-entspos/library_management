@@ -248,7 +248,6 @@ export default function AddUserForm() {
       toast.error('Failed to register. Check your internet connection.')
     } finally {
       setLoading(false)
-      queryClient.refetchQueries({ queryKey: ['members'] })
     }
   }
 
@@ -303,6 +302,8 @@ export default function AddUserForm() {
           <div className="text-xl font-bold text-red-600">{msg}</div>
         </div>
       )
+    } finally {
+      queryClient.refetchQueries({ queryKey: ['members'] })
     }
 
     setIsProcessing(false)
