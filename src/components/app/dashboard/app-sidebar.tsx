@@ -9,6 +9,7 @@ import {
   IconDatabase,
   IconFileAi,
   IconFileDescription,
+  IconFilePencil,
   IconFileWord,
   IconFolder,
   IconListDetails,
@@ -57,6 +58,11 @@ const data = {
       title: 'Checkin/Checkout',
       url: '/checkin-checkout',
       icon: IconClockHour11,
+    },
+    {
+      title: 'Soft Material',
+      url: '/soft-material',
+      icon: IconFilePencil,
     },
   ],
   navClouds: [

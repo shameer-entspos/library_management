@@ -215,6 +215,8 @@ const columns: ColumnDef<Member>[] = [
     cell: ({ row }) => {
       const membership = row.original.membership
 
+      console.log(row.original.membership)
+
       if (
         !membership ||
         !membership.plan ||
@@ -247,7 +249,7 @@ const columns: ColumnDef<Member>[] = [
 
           {/* Dialog Content */}
           <DialogContent className="w-[90vw] max-w-3xl p-4">
-            <div className="h-[300px] w-full overflow-hidden rounded-2xl bg-white">
+            <div className="w-full overflow-hidden rounded-2xl bg-white">
               {/* Header */}
               <div className="relative z-10 flex items-center justify-between bg-white p-2">
                 <Image
@@ -284,19 +286,19 @@ const columns: ColumnDef<Member>[] = [
                     ID: NWL-<span>{row.original.id}</span>
                   </div>
                   <div className="flex gap-2">
-                    <span className="w-[100px]">Name</span>
+                    <span className="w-[120px]">Name</span>
                     <p className="flex-1 border-b-2 border-black">
                       {row.original.first_name} {row.original.last_name}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <span className="w-[100px]">CNIC</span>
+                    <span className="w-[120px]">CNIC</span>
                     <p className="flex-1 border-b-2 border-black">
                       {row.original.cnic}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <span className="w-[100px]">Issue Date</span>
+                    <span className="w-[120px]">Issue Date</span>
                     <p className="flex-1 border-b-2 border-black">
                       {row.original.membership.issued_date.split('T')[0]}
                     </p>
@@ -314,17 +316,21 @@ const columns: ColumnDef<Member>[] = [
                 </div>
               </div>
 
-              <div className="w-full text-center text-xs text-black">
+              <div className="mb-2 w-full text-center text-xs text-black">
                 www.elibrary.punjab.gov.pk
               </div>
 
               {/* Footer */}
             </div>
-
-            <Button variant={'secondary'}>
-              <IconDownload />
-              Download
-            </Button>
+            <a
+              href={`${process.env.API_URL_PREFIX}/api/user/memberships/card/${row.original.membership?.id}/`}
+              target="_blank"
+            >
+              <Button variant={'secondary'} className="mx-auto h-10 w-max">
+                <IconDownload />
+                Download
+              </Button>
+            </a>
           </DialogContent>
         </Dialog>
       )
@@ -390,8 +396,10 @@ const Actions = ({ member }: { member: any }) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel className="h-10!">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="h-10!" onClick={handleDelete}>
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

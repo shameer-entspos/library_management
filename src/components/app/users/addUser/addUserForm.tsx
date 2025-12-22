@@ -37,24 +37,11 @@ import { registerNewMember } from '@/lib/api'
 import { useSession } from 'next-auth/react'
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  CheckCircle,
-  Loader2,
-  Plus,
-  RefreshCw,
-  UserCheck,
-  XCircle,
-} from 'lucide-react'
+import { CheckCircle, Loader2, Plus, XCircle } from 'lucide-react'
 import Image from 'next/image'
 import axios from 'axios'
 import { SearchableSelect } from '@/components/ui/search-select'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { IconSettings } from '@tabler/icons-react'
-import { CardTitle } from '@/components/ui/card'
+import { useMemberStore } from '@/zustand/members'
 
 const categoryOptions = [
   { label: 'Student', value: 'student' },
@@ -110,7 +97,7 @@ type AddUserFormValues = z.infer<typeof addUserSchema>
 
 export default function AddUserForm() {
   const queryClient = useQueryClient()
-
+  const { members } = useMemberStore()
   const [registered, setRegistered] = useState<{
     success: boolean
     tab: 'scan_image' | 'register' | 'qr_code'
@@ -199,16 +186,16 @@ export default function AddUserForm() {
     }
   }
 
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === 'email' && value.email) {
-        const username = value.email.split('@')[0]
-        form.setValue('username', username)
-      }
-    })
+  // useEffect(() => {
+  //   const subscription = form.watch((value, { name }) => {
+  //     if (name === 'email' && value.email) {
+  //       const username = value.email.split('@')[0]
+  //       form.setValue('username', username)
+  //     }
+  //   })
 
-    return () => subscription.unsubscribe()
-  }, [form])
+  //   return () => subscription.unsubscribe()
+  // }, [form])
 
   useEffect(() => {
     if (registered.tab === 'scan_image') {
@@ -219,6 +206,16 @@ export default function AddUserForm() {
   useEffect(() => {
     stopCamera()
   }, [])
+
+  useEffect(() => {
+    // get latest member id
+    if (members.length > 0) {
+      const id = members[0].id.toString()
+      console.log(id)
+
+      form.setValue('username', `NWL-${id}`)
+    }
+  }, [open])
 
   async function onSubmit(values: AddUserFormValues) {
     const token = session?.user?.access
@@ -378,13 +375,9 @@ export default function AddUserForm() {
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Username</FormLabel>
+                          <FormLabel>Member ID</FormLabel>
                           <FormControl>
-                            <Input
-                              readOnly
-                              placeholder="Auto generated"
-                              {...field}
-                            />
+                            <Input placeholder="Auto generated" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
