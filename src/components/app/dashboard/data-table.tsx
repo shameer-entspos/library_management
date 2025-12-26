@@ -123,23 +123,20 @@ const columns: ColumnDef<Member>[] = [
     header: 'Photo',
     cell: ({ row }) => (
       <Avatar className="size-10">
-        <AvatarImage
-          src={
-            `${process.env.API_URL_PREFIX}${row.original.photo}` || undefined
-          }
+        <Image
+          src={`${process.env.API_URL_PREFIX}${row.original.photo}`}
           alt={`${row.original.first_name} ${row.original.last_name}`}
           className="object-cover"
+          width={100}
+          height={100}
         />
-        <AvatarFallback>
-          {row.original.first_name[0]}
-          {row.original.last_name[0]}
-        </AvatarFallback>
       </Avatar>
     ),
   },
   {
     id: 'name',
     header: 'Name',
+    accessorFn: (row) => `${row.first_name} ${row.last_name}`.toLowerCase(),
     cell: ({ row }) => (
       <div className="font-medium">
         {row.original.first_name} {row.original.last_name}
@@ -436,7 +433,6 @@ const Actions = ({ member }: { member: any }) => {
 export function MembersDataTable() {
   // Live data from Zustand — updates instantly!
   const members = useMemberStore((state) => state.members)
-  const [editingMember, setEditingMember] = React.useState<Member | null>(null)
 
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -445,7 +441,16 @@ export function MembersDataTable() {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+  const [searchValue, setSearchValue] = React.useState('')
   const [globalFilter, setGlobalFilter] = React.useState('')
+
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      setGlobalFilter(searchValue)
+    }, 400)
+
+    return () => clearTimeout(timeout)
+  }, [searchValue])
 
   const table = useReactTable({
     data: members,
@@ -478,8 +483,8 @@ export function MembersDataTable() {
             <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
               placeholder="Search members..."
-              value={globalFilter ?? ''}
-              onChange={(e) => setGlobalFilter(e.target.value)}
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
               className="w-full pl-10 sm:w-96"
             />
           </div>
@@ -519,9 +524,9 @@ export function MembersDataTable() {
       </div>
 
       {/* Table */}
-      <div className="dark:bg-input/20 rounded-md border">
+      <div className="dark:bg-input/20 border">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (

@@ -1,4 +1,3 @@
-// app/api/attendance/checkin_checkout/route.ts
 import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
@@ -7,16 +6,15 @@ export async function POST(request: Request) {
 
     console.log(request.headers.get('authorization'))
 
-    // Forward to your backend
     const backendResponse = await fetch(
-      `${process.env.API_URL_PREFIX}/api/attendance/checkin_checkout/`,
+      `${process.env.API_URL_PREFIX}/api/attendance/undo/`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: request.headers.get('authorization') || '',
         },
-        body: JSON.stringify(body), // contains { action: 'checkin'|'checkout', image, method: 'face' }
+        body: JSON.stringify(body),
       }
     )
 
@@ -24,7 +22,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(data, { status: backendResponse.status })
   } catch (error) {
-    console.error('Proxy error (checkin/checkout):', error)
+    console.error('Proxy error (face register):', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

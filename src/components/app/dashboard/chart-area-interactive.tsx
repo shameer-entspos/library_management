@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
 import { useIsMobile } from '@/hooks/use-mobile'
 import {
@@ -156,7 +156,7 @@ export function ChartAreaInteractive() {
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         <ChartContainer
           config={chartConfig}
-          className="aspect-auto h-[250px] w-full"
+          className="aspect-auto h-[400px] w-full"
         >
           <AreaChart data={chartData}>
             <defs>
@@ -175,6 +175,14 @@ export function ChartAreaInteractive() {
             </defs>
 
             <CartesianGrid vertical={false} />
+
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              domain={[0, 'dataMax + 2']}
+              allowDecimals={false}
+            />
 
             <XAxis
               dataKey="date"

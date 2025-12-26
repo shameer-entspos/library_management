@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import axios from 'axios'
 import {
   Camera,
@@ -29,7 +29,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { IconMenu, IconSettings } from '@tabler/icons-react'
+import { IconCamera, IconMenu, IconSettings } from '@tabler/icons-react'
 import { CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
@@ -39,11 +39,52 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { SearchableSelect } from '@/components/ui/search-select'
 import { useMemberStore } from '@/zustand/members'
+import { IoCamera } from 'react-icons/io5'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { useQueryClient } from '@tanstack/react-query'
+import { useSession } from 'next-auth/react'
+import { toast } from 'sonner'
+import Image from 'next/image'
 
 type Mode = 'register' | 'checkin' | 'checkout'
 type CameraState = 'loading' | 'ready' | 'denied' | 'error'
 
+const getLatestAttendance = (attendances: any[]) => {
+  if (!attendances?.length) return null
+
+  return attendances.reduce((latest, curr) =>
+    new Date(curr.check_in) > new Date(latest.check_in) ? curr : latest
+  )
+}
+
+function getLatestAction(attendance: any): string | null {
+  if (!attendance?.check_in && !attendance?.check_out) {
+    return null
+  }
+
+  if (attendance.check_in && !attendance.check_out) {
+    return attendance.check_in
+  }
+
+  if (!attendance.check_in && attendance.check_out) {
+    return attendance.check_out
+  }
+
+  const checkInTime = new Date(attendance.check_in).getTime()
+  const checkOutTime = new Date(attendance.check_out).getTime()
+
+  return checkOutTime > checkInTime ? attendance.check_out : attendance.check_in
+}
+
 export default function FaceAttendance() {
+  const { data: session }: any = useSession()
   const videoRef = useRef<HTMLVideoElement>(null)
   const [mode, setMode] = useState<Mode>('checkin')
   const [userId, setUserId] = useState('')
@@ -56,9 +97,14 @@ export default function FaceAttendance() {
   const streamRef = useRef<MediaStream | null>(null)
 
   const { members } = useMemberStore()
+  const [image, setImage] = useState<any>('')
 
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+  const queryClient = useQueryClient()
+  const [bestUserId, setBestUserId] = useState<any>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // const loadVideoDevices = async () => {
   //   const devices = await navigator.mediaDevices.enumerateDevices()
@@ -172,13 +218,58 @@ export default function FaceAttendance() {
 
     setIsProcessing(true)
     setStatus(<Loader2 className="mx-auto h-12 w-12 animate-spin" />)
+    setOpen(true) // open dialog immediately
+
+    const video = videoRef.current!
+    const containerWidth = 466
+    const containerHeight = 600
+
+    const videoWidth = video.videoWidth
+    const videoHeight = video.videoHeight
+
+    const videoAspect = videoWidth / videoHeight
+    const containerAspect = containerWidth / containerHeight
+
+    let sx = 0
+    let sy = 0
+    let sWidth = videoWidth
+    let sHeight = videoHeight
+
+    if (videoAspect > containerAspect) {
+      sWidth = videoHeight * containerAspect
+      sx = (videoWidth - sWidth) / 2
+    } else {
+      sHeight = videoWidth / containerAspect
+      sy = (videoHeight - sHeight) / 2
+    }
 
     const canvas = document.createElement('canvas')
-    canvas.width = videoRef.current.videoWidth
-    canvas.height = videoRef.current.videoHeight
-    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0)
+    canvas.width = containerWidth
+    canvas.height = containerHeight
+
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(
+      video,
+      sx,
+      sy,
+      sWidth,
+      sHeight,
+      0,
+      0,
+      containerWidth,
+      containerHeight
+    )
 
     const imageBase64 = canvas.toDataURL('image/jpeg', 0.95)
+    setImage(imageBase64)
+
+    const token = session?.user?.access
+
+    if (!token) {
+      setStatus('Failed to capture image')
+      setIsProcessing(false)
+      return
+    }
 
     try {
       let res
@@ -190,10 +281,19 @@ export default function FaceAttendance() {
           return
         }
 
-        res = await axios.post('/api/attendance/face/register/', {
-          user_id: parseInt(userId),
-          image: imageBase64,
-        })
+        res = await axios.post(
+          '/api/attendance/face/register/',
+          {
+            user_id: parseInt(userId),
+            image: imageBase64,
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
 
         setStatus(
           <div className="text-center">
@@ -205,16 +305,27 @@ export default function FaceAttendance() {
           </div>
         )
       } else {
-        res = await axios.post('/api/attendance/checkin_checkout/', {
-          action: mode, // 'checkin' or 'checkout'
-          image: imageBase64,
-          method: 'face',
-        })
+        res = await axios.post(
+          '/api/attendance/checkin_checkout/',
+          {
+            action: mode,
+            image: imageBase64,
+            method: 'face',
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
 
         const isCheckIn = res.data.message.includes('In')
         const confidence = res.data.confidence
           ? `${(parseFloat(res.data.confidence) * 100).toFixed(1)}%`
           : 'High'
+
+        setBestUserId(res.data.user_id)
 
         setStatus(
           <div className="p-2 text-center">
@@ -252,10 +363,55 @@ export default function FaceAttendance() {
           </div>
         </div>
       )
+    } finally {
+      setIsProcessing(false)
+      queryClient.refetchQueries({ queryKey: ['members'] })
     }
 
     setIsProcessing(false)
   }
+
+  const undoAttendance = async () => {
+    const token = session?.user?.access
+
+    if (!token) {
+      setStatus('Failed to undo attendance')
+      return
+    }
+
+    try {
+      const res = await axios.post(
+        '/api/attendance/undo/',
+        {
+          user_id: bestUserId,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      setStatus(res.data.message)
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Operation failed. Try again.'
+      setStatus(msg)
+    } finally {
+      setIsProcessing(false)
+      setBestUserId(0)
+
+      queryClient.refetchQueries({ queryKey: ['members'] })
+    }
+  }
+
+  const filtered = useMemo(() => {
+    // filter members by search query
+    return members.filter((member) => {
+      return (
+        member.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.last_name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    })
+  }, [members, searchQuery])
 
   return (
     <>
@@ -273,44 +429,6 @@ export default function FaceAttendance() {
               Checkin Checkout
             </h1>
           </div>
-          {/* <div className="h-max!">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-10 w-10 sm:w-max"
-                  >
-                    <IconSettings />
-                    <span className="hidden sm:flex">Settings</span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="space-y-4">
-                  <CardTitle>Change camera</CardTitle>
-                  {videoDevices.length > 0 && (
-                    <Select
-                      value={selectedDeviceId ?? ''}
-                      onValueChange={(value) => setSelectedDeviceId(value)}
-                    >
-                      <SelectTrigger className="h-10! w-full rounded-full">
-                        <SelectValue placeholder="Select camera" />
-                      </SelectTrigger>
-
-                      <SelectContent>
-                        {videoDevices.map((device, index) => (
-                          <SelectItem
-                            key={device.deviceId}
-                            value={device.deviceId}
-                          >
-                            {device.label || `Camera ${index + 1}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </PopoverContent>
-              </Popover>
-            </div> */}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -357,120 +475,260 @@ export default function FaceAttendance() {
         </div>
       </header>
 
-      <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-        <div className="px-4 lg:px-6">
-          <div className="mx-auto h-full max-w-4xl space-y-4">
-            {/* Title */}
-            {/* <div className="mb-8 text-center">
-          <h1 className="text-foreground mb-3 text-5xl font-bold">
-            Facial Attendance
-          </h1>
-          <p className="text-foreground text-lg">
-            Use your phone as camera • High accuracy • Instant results
-          </p>
-        </div> */}
+      <div className="flex flex-1 flex-col gap-4 py-4 md:gap-6 md:py-6">
+        <div className="h-full px-4 lg:px-6">
+          <>
+            <div className="mx-auto h-full space-y-2">
+              {/* User ID for Registration */}
+              {mode === 'register' ? (
+                <div className="mx-auto max-w-md">
+                  <SearchableSelect
+                    value={userId}
+                    onChange={(value) => setUserId(value as string)}
+                    options={members.map((member) => ({
+                      value: String(member.id),
+                      label: member.first_name + ' ' + member.last_name,
+                    }))}
+                    placeholder="Select a member"
+                  />{' '}
+                </div>
+              ) : (
+                <div className="flex w-full flex-col items-center justify-center">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant={'outline'}
+                        className="mx-auto w-max text-wrap wrap-break-word"
+                      >
+                        Select Member
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-4">
+                      <div className="flex">
+                        <CardTitle className="mb-2 flex-shrink-0 text-sm">
+                          Members
+                        </CardTitle>
+                      </div>
+                      <Input
+                        type="text"
+                        placeholder="Search"
+                        value={searchQuery}
+                        className="mb-2 h-8 flex-1 text-xs!"
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                      <div className="max-h-96 space-y-1 overflow-y-auto">
+                        {filtered ? (
+                          filtered.map((member) => {
+                            const lastAttendance = getLatestAttendance(
+                              member.attendances
+                            )
+                            const lastAction = getLatestAction(lastAttendance)
+                            return (
+                              <Button
+                                key={member.id}
+                                variant="outline"
+                                className="w-full justify-start px-2!"
+                                onClick={async () => {
+                                  setIsProcessing(true)
+                                  setOpen(true)
+                                  setStatus(
+                                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
+                                  )
 
-            {/* Mode Selector */}
+                                  try {
+                                    const token = session?.user?.access
+                                    if (!token) throw new Error('No auth token')
 
-            {/* User ID for Registration */}
-            {mode === 'register' && (
-              <div className="mx-auto mb-8 max-w-md">
-                <SearchableSelect
-                  value={userId}
-                  onChange={(value) => setUserId(value as string)}
-                  options={members.map((member) => ({
-                    value: String(member.id),
-                    label: member.first_name + ' ' + member.last_name,
-                  }))}
-                  placeholder="Select a member"
-                />{' '}
+                                    const res = await axios.post(
+                                      `/api/attendance/checkin_checkout/${member.id}/`,
+                                      {},
+                                      {
+                                        headers: {
+                                          Authorization: `Bearer ${token}`,
+                                        },
+                                      }
+                                    )
+
+                                    const isCheckIn =
+                                      res.data.message.includes('In')
+                                    setBestUserId(member.id)
+                                    setStatus(
+                                      <div className="text-center">
+                                        <div
+                                          className={`text-lg font-bold ${
+                                            isCheckIn
+                                              ? 'text-green-600'
+                                              : 'text-blue-500'
+                                          }`}
+                                        >
+                                          {res.data.user}
+                                        </div>
+                                        <div className="text-muted-foreground mt-1 text-sm">
+                                          {res.data.message}
+                                        </div>
+                                        {res.data.duration && (
+                                          <div className="text-foreground mt-1 text-sm">
+                                            Duration: {res.data.duration}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  } catch (err: any) {
+                                    const msg =
+                                      err.response?.data?.error ||
+                                      'Operation failed. Try again.'
+                                    setStatus(
+                                      <div className="text-center text-red-600">
+                                        {msg}
+                                      </div>
+                                    )
+                                  } finally {
+                                    setIsProcessing(false)
+                                  }
+                                }}
+                              >
+                                <Image
+                                  src={`${process.env.API_URL_PREFIX}${member.photo}`}
+                                  alt={
+                                    member.first_name + ' ' + member.last_name
+                                  }
+                                  className="size-8 rounded-full object-cover"
+                                  width={32}
+                                  height={32}
+                                />
+                                <div className="flex flex-col items-start">
+                                  <span>
+                                    {member.first_name} {member.last_name}
+                                  </span>
+                                  <span className="text-muted-foreground text-xs">
+                                    {lastAction
+                                      ? new Date(lastAction)?.toLocaleString()
+                                      : '-'}
+                                  </span>
+                                </div>
+                              </Button>
+                            )
+                          })
+                        ) : (
+                          <span className="text-muted-foreground w-full text-center text-sm">
+                            No members
+                          </span>
+                        )}
+                      </div>
+
+                      {status &&
+                      status === 'Camera ready! Look straight at the camera' ? (
+                        ''
+                      ) : (
+                        <div className="text-foreground mt-4 rounded-lg bg-gray-100 p-2 text-center text-sm">
+                          {status}
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                  <p className="mt-4 w-full text-center">OR</p>
+                </div>
+              )}
+
+              <div className="text-foreground/80 mx-auto w-full text-center">
+                {'Click capture button to '}
+                {mode === 'register'
+                  ? 'Register Face'
+                  : mode === 'checkin'
+                    ? 'Checkin/Checkout'
+                    : 'Check Out Now'}
               </div>
-            )}
+              <div className="relative mx-auto h-[500px] min-h-96 w-full max-w-2xl rounded-3xl bg-black sm:h-[600px] sm:w-[466px]">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="h-full w-full rounded-3xl object-cover"
+                />
 
-            {/* Camera */}
-
-            {/* {cameraState === 'ready' && (
-        )} */}
-            <div className="relative mx-auto min-h-96 max-w-2xl overflow-hidden rounded-3xl bg-black shadow-2xl">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="h-96 w-full object-cover md:h-full"
-              />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <div className="h-92 w-72 rounded-[40%] border-4 border-dashed border-green-400 opacity-60"></div>
+                <Button
+                  onClick={captureAndSend}
+                  disabled={
+                    isProcessing || (mode === 'register' && !userId.trim())
+                  }
+                  className={`absolute -bottom-7 left-1/2 mx-auto flex size-14 -translate-x-1/2 transform items-center gap-2 rounded-3xl bg-linear-to-br text-sm font-bold text-white backdrop-blur-sm transition-all hover:scale-105 ${
+                    isProcessing || (mode === 'register' && !userId.trim())
+                      ? 'cursor-not-allowed from-gray-600 to-gray-800'
+                      : mode === 'register'
+                        ? 'bg-purple-600 hover:bg-purple-700'
+                        : mode === 'checkin'
+                          ? 'from-green-600/50 to-green-300/50 hover:bg-green-600'
+                          : 'hover:'
+                  }`}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="size-8 animate-spin" />
+                    </>
+                  ) : (
+                    <>
+                      <IoCamera className="size-8" />
+                    </>
+                  )}
+                </Button>
               </div>
-              <span className="bg-opacity-70 bg-primary absolute bottom-0 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-center text-sm font-medium text-white">
-                Align face in oval
-              </span>
+
+              {cameraState === 'denied' && (
+                <div className="px-3 py-8 text-center text-red-600 sm:py-10">
+                  <XCircle className="mx-auto mb-3 size-12 md:size-12" />
+                  <p className="text-xl font-semibold">Camera access denied</p>
+                  <p className="mt-2 text-sm">
+                    Enable camera permission and reload the page
+                  </p>
+                </div>
+              )}
+
+              {cameraState === 'error' && (
+                <div className="px-3 py-8 text-center text-red-600 sm:py-10">
+                  <XCircle className="mx-auto mb-3 size-12 md:size-12" />
+                  <p className="text-xl font-semibold">Camera not available</p>
+                </div>
+              )}
+
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Attendance Status</DialogTitle>
+                  </DialogHeader>
+                  {/* Status */}
+                  <div className="mt-4 text-center">
+                    <div className="bg-popover inline-block rounded-2xl text-sm md:text-base">
+                      {typeof status === 'string' ? (
+                        <p className="text-foreground">{status}</p>
+                      ) : (
+                        status
+                      )}
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <DialogClose>
+                      <Button className="" size={'sm'} variant={'outline'}>
+                        Close
+                      </Button>
+                    </DialogClose>
+
+                    <Button
+                      className=""
+                      size={'sm'}
+                      variant={'ghost'}
+                      onClick={undoAttendance}
+                    >
+                      Undo
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              {/* Capture Button */}
             </div>
-
-            {cameraState === 'denied' && (
-              <div className="px-3 py-8 text-center text-red-600 sm:py-10">
-                <XCircle className="mx-auto mb-3 size-12 md:size-12" />
-                <p className="text-xl font-semibold">Camera access denied</p>
-                <p className="mt-2 text-sm">
-                  Enable camera permission and reload the page
-                </p>
-              </div>
-            )}
-
-            {cameraState === 'error' && (
-              <div className="px-3 py-8 text-center text-red-600 sm:py-10">
-                <XCircle className="mx-auto mb-3 size-12 md:size-12" />
-                <p className="text-xl font-semibold">Camera not available</p>
-              </div>
-            )}
-
-            <div className="mt-4 text-center">
-              <Button
-                onClick={captureAndSend}
-                disabled={
-                  isProcessing || (mode === 'register' && !userId.trim())
-                }
-                className={`mx-auto flex transform items-center gap-2 rounded-full px-6! text-sm font-bold text-white shadow-2xl transition-all hover:scale-105 ${
-                  isProcessing || (mode === 'register' && !userId.trim())
-                    ? 'cursor-not-allowed bg-gray-400'
-                    : mode === 'register'
-                      ? 'bg-purple-600 hover:bg-purple-700'
-                      : mode === 'checkin'
-                        ? 'bg-green-600 hover:bg-green-700'
-                        : 'hover:'
-                }`}
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="size-8 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Camera className="size-5" />
-                    {mode === 'register'
-                      ? 'Register Face'
-                      : mode === 'checkin'
-                        ? 'Checkin/Checkout'
-                        : 'Check Out Now'}
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Status */}
-            <div className="mt-4 text-center">
-              <div className="bg-popover inline-block rounded-2xl p-2 px-4 text-sm shadow-lg md:text-base">
-                {typeof status === 'string' ? (
-                  <p className="text-foreground">{status}</p>
-                ) : (
-                  status
-                )}
-              </div>
-            </div>
-
-            {/* Capture Button */}
-          </div>
+          </>
         </div>
       </div>
     </>

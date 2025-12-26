@@ -42,6 +42,7 @@ import Image from 'next/image'
 import axios from 'axios'
 import { SearchableSelect } from '@/components/ui/search-select'
 import { useMemberStore } from '@/zustand/members'
+import { IoCamera } from 'react-icons/io5'
 
 const categoryOptions = [
   { label: 'Student', value: 'student' },
@@ -123,7 +124,7 @@ export default function AddUserForm() {
     'Enter phone IP and connect...'
   )
   const [isProcessing, setIsProcessing] = useState(false)
-
+  const [image, setImage] = useState('')
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
@@ -210,7 +211,7 @@ export default function AddUserForm() {
   useEffect(() => {
     // get latest member id
     if (members.length > 0) {
-      const id = members[0].id.toString()
+      const id = members.length + 1
       console.log(id)
 
       form.setValue('username', `NWL-${id}`)
@@ -257,12 +258,48 @@ export default function AddUserForm() {
     setIsProcessing(true)
     setStatus(<Loader2 className="mx-auto h-12 w-12 animate-spin" />)
 
+    const video = videoRef.current!
+    const containerWidth = 466
+    const containerHeight = 600
+
+    const videoWidth = video.videoWidth
+    const videoHeight = video.videoHeight
+
+    const videoAspect = videoWidth / videoHeight
+    const containerAspect = containerWidth / containerHeight
+
+    let sx = 0
+    let sy = 0
+    let sWidth = videoWidth
+    let sHeight = videoHeight
+
+    if (videoAspect > containerAspect) {
+      sWidth = videoHeight * containerAspect
+      sx = (videoWidth - sWidth) / 2
+    } else {
+      sHeight = videoWidth / containerAspect
+      sy = (videoHeight - sHeight) / 2
+    }
+
     const canvas = document.createElement('canvas')
-    canvas.width = videoRef.current.videoWidth
-    canvas.height = videoRef.current.videoHeight
-    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0)
+    canvas.width = containerWidth
+    canvas.height = containerHeight
+
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(
+      video,
+      sx,
+      sy,
+      sWidth,
+      sHeight,
+      0,
+      0,
+      containerWidth,
+      containerHeight
+    )
 
     const imageBase64 = canvas.toDataURL('image/jpeg', 0.95)
+    setImage(imageBase64)
 
     try {
       if (!userId.trim()) {
@@ -342,7 +379,7 @@ export default function AddUserForm() {
 
       <DialogContent
         showCloseButton={false}
-        className={` ${registered.tab === 'scan_image' && 'max-h-[96vh]! sm:max-w-2xl!'}`}
+        className={` ${registered.tab === 'scan_image' && 'max-h-[96vh]! sm:max-w-2xl!'} px-4! md:px-6!`}
       >
         <DialogHeader>
           <DialogTitle>
@@ -608,59 +645,54 @@ export default function AddUserForm() {
                     </SelectContent>
                   </Select>
                 )}
-                <div className="relative mx-auto min-h-96 max-w-2xl overflow-hidden rounded-3xl bg-black shadow-2xl">
+                <div className="relative mx-auto h-[350px] w-full max-w-2xl rounded-3xl bg-black sm:h-[550px] sm:w-[406px]">
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
                     muted
-                    className="w-full"
+                    className="h-full w-full rounded-3xl object-cover"
                   />
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <div className="h-92 w-72 rounded-[40%] border-4 border-dashed border-green-400 opacity-60" />{' '}
-                  </div>
-                  <div className="bg-opacity-70 absolute bottom-8 left-1/2 -translate-x-1/2 rounded-full bg-black px-6 py-3 text-center text-sm font-medium text-white md:text-base">
-                    Align face in oval
-                  </div>
-                </div>{' '}
-                {/* Status */}
-                <div className="mx-auto inline-block rounded-2xl">
-                  <>
-                    {typeof status === 'string' ? (
-                      <p className="text-foreground text-xl">{status}</p>
-                    ) : (
-                      status
-                    )}
-                  </>
-                </div>
-                <div className="flex justify-center">
                   <Button
                     size={'lg'}
                     onClick={captureAndSend}
-                    className="rounded-full"
+                    className="absolute -bottom-7 left-1/2 mx-auto flex size-14 -translate-x-1/2 transform items-center gap-2 rounded-3xl rounded-full bg-linear-to-br text-sm font-bold text-white backdrop-blur-sm transition-all hover:scale-105"
                   >
                     {isProcessing ? (
                       <>
                         <Loader2 className="h-12 w-12 animate-spin" />
-                        Processing...
                       </>
                     ) : (
-                      'Capture & Register Face'
+                      <IoCamera className="size-8" />
                     )}
                   </Button>
+                </div>{' '}
+                {/* Status */}
+                <div className="mx-auto mt-5 inline-block rounded-2xl">
+                  <>
+                    {typeof status === 'string' ? (
+                      <p className="text-foreground text-sm md:text-lg">
+                        {status}
+                      </p>
+                    ) : (
+                      status
+                    )}
+                  </>
                 </div>
               </div>
             ) : registered.tab === 'qr_code' ? (
               <>
                 <div className="flex flex-col justify-center gap-4 text-center">
                   {registered.qrUrl ? (
-                    <Image
-                      src={`${process.env.API_URL_PREFIX}${registered.qrUrl}`}
-                      alt="Member QR Code"
-                      className="h-64 w-64 object-contain"
-                      width={256}
-                      height={256}
-                    />
+                    <>
+                      <Image
+                        src={`${process.env.API_URL_PREFIX}${registered.qrUrl}`}
+                        alt="Member QR Code"
+                        className="h-64 w-64 object-contain"
+                        width={256}
+                        height={256}
+                      />
+                    </>
                   ) : (
                     <p>No QR available (PDF generation failed).</p>
                   )}

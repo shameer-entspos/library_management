@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Columns, Loader2, Search } from 'lucide-react'
+import { CalendarDays, Columns, Loader2, Search } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -52,6 +52,20 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { useMemberStore } from '@/zustand/members'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+
+import {
+  ButtonGroup,
+  ButtonGroupSeparator,
+  ButtonGroupText,
+} from '@/components/ui/button-group'
+import { CardDescription } from '@/components/ui/card'
+import { Calendar } from '@/components/ui/calendar'
+import { format } from 'date-fns'
 
 export type AttendanceRow = {
   id: number
@@ -75,19 +89,55 @@ const getFirstAttendance = (attendances: AttendanceRow[]) => {
   )[0]
 }
 
+const getLatestAttendance = (attendances: AttendanceRow[]) => {
+  if (!attendances?.length) return null
+
+  return attendances.reduce((latest, curr) =>
+    new Date(curr.check_in) > new Date(latest.check_in) ? curr : latest
+  )
+}
+
+const dateKey = (iso: string) => new Date(iso).toISOString().split('T')[0]
+
+const todayKey = () => dateKey(new Date().toISOString())
+
+const yesterdayKey = () => {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return dateKey(d.toISOString())
+}
+
+type DateFilter = 'all' | 'today' | 'yesterday' | 'custom'
+
 // Columns now use useMemo and reference the helper safely
 const columns: ColumnDef<any>[] = [
   {
     accessorKey: 'name',
     header: 'Name',
-    cell: ({ row }) => <span className="capitalize">{row.original.name}</span>,
+    cell: ({ row }) => {
+      if (row.original.isGroup) {
+        const dateObj = new Date(row.original.date)
+        const formattedDate = dateObj.toLocaleDateString(undefined, {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        })
+
+        return (
+          <span className="text-primary font-semibold">{formattedDate}</span>
+        )
+      }
+
+      return <span className="capitalize">{row.original.name}</span>
+    },
   },
   {
     id: 'first_check_in',
     header: 'First Check In',
     cell: ({ row }) => {
       const first = getFirstAttendance(row.original.attendances)
-      return first ? new Date(first.check_in).toLocaleString() : '—'
+      return first ? new Date(first.check_in).toLocaleTimeString() : '—'
     },
   },
   {
@@ -95,7 +145,9 @@ const columns: ColumnDef<any>[] = [
     header: 'First Check Out',
     cell: ({ row }) => {
       const first = getFirstAttendance(row.original.attendances)
-      return first?.check_out ? new Date(first.check_out).toLocaleString() : '—'
+      return first?.check_out
+        ? new Date(first.check_out).toLocaleTimeString()
+        : '—'
     },
   },
   {
@@ -122,25 +174,84 @@ const AttendanceList = () => {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState({})
 
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
+  const [customDate, setCustomDate] = useState<string | null>(null)
+
   const { members } = useMemberStore()
-  console.log(members)
 
-  // Transform data once using useMemo
   const data = useMemo(() => {
-    return members.map((m) => ({
-      id: m.id,
-      name: m.first_name + ' ' + m.last_name,
-      email: m.email,
-      attendances: m.attendances || [],
-    }))
-  }, [members])
+    const mapped = members
+      .map((m) => {
+        const latestAttendance = getLatestAttendance(m.attendances || [])
 
-  // Simulate loading or remove if data is instantly available
+        return {
+          id: m.id,
+          name: `${m.first_name} ${m.last_name}`,
+          email: m.email,
+          attendances: m.attendances || [],
+          latestAttendance,
+        }
+      })
+      .filter((user) => user.latestAttendance)
+
+    // 2. Sort users by latest attendance (DESC)
+    mapped.sort((a, b) => {
+      if (!a.latestAttendance) return 1
+      if (!b.latestAttendance) return -1
+
+      return (
+        new Date(b.latestAttendance.check_in).getTime() -
+        new Date(a.latestAttendance.check_in).getTime()
+      )
+    })
+
+    // 3. Apply date filter
+    const filtered = mapped.filter((user) => {
+      if (!user.latestAttendance) return dateFilter === 'all'
+
+      const userDate = dateKey(user.latestAttendance.check_in)
+
+      if (dateFilter === 'today') return userDate === todayKey()
+      if (dateFilter === 'yesterday') return userDate === yesterdayKey()
+      if (dateFilter === 'custom') return userDate === customDate
+
+      return true // all
+    })
+
+    const grouped: Record<string, typeof filtered> = {}
+
+    filtered.forEach((user) => {
+      const key = user.latestAttendance
+        ? dateKey(user.latestAttendance.check_in)
+        : ''
+
+      if (!grouped[key]) grouped[key] = []
+      grouped[key].push(user)
+    })
+
+    const rows: any[] = []
+
+    Object.entries(grouped).forEach(([date, users]) => {
+      rows.push({
+        id: `date-${date}`,
+        isGroup: true,
+        date,
+      })
+
+      users.forEach((u) =>
+        rows.push({
+          ...u,
+          isGroup: false,
+        })
+      )
+    })
+
+    return rows
+  }, [members, dateFilter, customDate])
+
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // If you're fetching data, set loading true initially
-    // For now, since data comes from Zustand, we assume it's ready
     setLoading(false)
   }, [])
 
@@ -176,7 +287,7 @@ const AttendanceList = () => {
   }
 
   return (
-    <div className="w-full space-y-4 p-4 pt-0 lg:p-6">
+    <div className="w-full space-y-4 p-4 pt-0! lg:p-6">
       <div className="flex flex-col gap-4 sm:items-center sm:justify-between lg:flex-row">
         <div className="flex items-center gap-3">
           <div className="relative w-full">
@@ -188,6 +299,71 @@ const AttendanceList = () => {
               className="w-full pl-10 sm:w-96"
             />
           </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="size-10 gap-2">
+                <CalendarDays className="size-4" />
+              </Button>
+            </PopoverTrigger>
+
+            <PopoverContent
+              className="ml-3 w-[90vw] p-3! sm:w-max sm:p-4!"
+              align="end"
+            >
+              <CardDescription className="mb-2 text-xs sm:text-sm">
+                {' '}
+                Filter by date
+              </CardDescription>
+              <ButtonGroup className="flex flex-row flex-wrap! gap-2">
+                <Button
+                  size={'sm'}
+                  className="h-7! rounded-sm! border! text-xs sm:h-8 sm:text-sm"
+                  variant={dateFilter === 'all' ? 'default' : 'outline'}
+                  onClick={() => setDateFilter('all')}
+                >
+                  {' '}
+                  All
+                </Button>
+                <Button
+                  size={'sm'}
+                  className="h-7! rounded-sm! border! text-xs sm:h-8 sm:text-sm"
+                  variant={dateFilter === 'today' ? 'default' : 'outline'}
+                  onClick={() => setDateFilter('today')}
+                >
+                  {' '}
+                  Today
+                </Button>
+                <Button
+                  size={'sm'}
+                  className="h-7! rounded-sm! border! text-xs sm:h-8 sm:text-sm"
+                  variant={dateFilter === 'yesterday' ? 'default' : 'outline'}
+                  onClick={() => setDateFilter('yesterday')}
+                >
+                  Yesterday
+                </Button>
+                <Button
+                  size={'sm'}
+                  className="h-7! rounded-sm! border! text-xs sm:h-8 sm:text-sm"
+                  variant={dateFilter === 'custom' ? 'default' : 'outline'}
+                  onClick={() => setDateFilter('custom')}
+                >
+                  {' '}
+                  Custom{' '}
+                </Button>
+              </ButtonGroup>
+
+              {dateFilter === 'custom' && (
+                <Calendar
+                  mode="single"
+                  className="bg-muted! mt-2 w-full rounded-md"
+                  selected={customDate ? new Date(customDate) : undefined}
+                  onSelect={(date) =>
+                    date && setCustomDate(format(date, 'yyyy-MM-dd'))
+                  }
+                />
+              )}
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="flex gap-2">
@@ -219,11 +395,11 @@ const AttendanceList = () => {
         </div>
       </div>
 
-      <div className="dark:bg-input/20 rounded-md border">
+      <div className="dark:bg-input/20 rounded-md">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow className="" key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableHead key={header.id}>
                     {header.isPlaceholder
@@ -238,29 +414,48 @@ const AttendanceList = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
+            {table.getRowModel().rows.map((row) => {
+              const isDateRow = row.original.isGroup
+
+              return (
                 <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell, index) => {
+                    // Skip borders for date rows
+                    if (isDateRow) {
+                      return (
+                        <TableCell key={cell.id} className="bg-muted/60">
+                          {cell.column.id === 'name'
+                            ? flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )
+                            : null}
+                        </TableCell>
+                      )
+                    }
+
+                    // Normal rows
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        className={`bg-background ${[
+                          'border-b',
+                          index === 0 && 'border-l',
+                          'border-r',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}`}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    )
+                  })}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No members found.
-                </TableCell>
-              </TableRow>
-            )}
+              )
+            })}
           </TableBody>
         </Table>
       </div>

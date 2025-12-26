@@ -1,22 +1,24 @@
-// app/api/attendance/checkin_checkout/route.ts
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(request: Request) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  console.log(id)
+
   try {
     const body = await request.json()
 
-    console.log(request.headers.get('authorization'))
-
-    // Forward to your backend
     const backendResponse = await fetch(
-      `${process.env.API_URL_PREFIX}/api/attendance/checkin_checkout/`,
+      `${process.env.API_URL_PREFIX}/api/attendance/checkin_checkout/${id}/`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: request.headers.get('authorization') || '',
         },
-        body: JSON.stringify(body), // contains { action: 'checkin'|'checkout', image, method: 'face' }
+        body: JSON.stringify(body),
       }
     )
 
