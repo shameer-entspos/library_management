@@ -209,12 +209,15 @@ export default function AddUserForm() {
   }, [])
 
   useEffect(() => {
+    console.log('OPENED')
     // get latest member id
     if (members.length > 0) {
       const id = members.length + 1
       console.log(id)
 
       form.setValue('username', `NWL-${id}`)
+    } else {
+      form.setValue('username', `NWL-1`)
     }
   }, [open])
 
@@ -308,10 +311,13 @@ export default function AddUserForm() {
         return
       }
 
-      const res = await axios.post('/api/attendance/face/register/', {
-        user_id: parseInt(userId),
-        image: imageBase64,
-      })
+      const res = await axios.post(
+        'http://127.0.0.1:8000/api/attendance/face/register/',
+        {
+          user_id: parseInt(userId),
+          image: imageBase64,
+        }
+      )
 
       setRegistered({
         success: true,

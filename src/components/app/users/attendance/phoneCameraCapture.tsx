@@ -168,6 +168,15 @@ export default function FaceAttendance() {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
       })
+      const devices = await navigator.mediaDevices.enumerateDevices()
+
+      // Filter only video input devices (cameras)
+      const videoDevices = devices.filter(
+        (device) => device.kind === 'videoinput'
+      )
+
+      console.log('All devices:', devices)
+      console.log('Video input devices:', videoDevices)
 
       streamRef.current = stream
 
@@ -282,7 +291,7 @@ export default function FaceAttendance() {
         }
 
         res = await axios.post(
-          '/api/attendance/face/register/',
+          'http://127.0.0.1:8000/api/attendance/face/register/',
           {
             user_id: parseInt(userId),
             image: imageBase64,
@@ -306,7 +315,7 @@ export default function FaceAttendance() {
         )
       } else {
         res = await axios.post(
-          '/api/attendance/checkin_checkout/',
+          'http://127.0.0.1:8000/api/attendance/checkin_checkout/',
           {
             action: mode,
             image: imageBase64,
@@ -381,7 +390,7 @@ export default function FaceAttendance() {
 
     try {
       const res = await axios.post(
-        '/api/attendance/undo/',
+        'http://127.0.0.1:8000/api/attendance/undo/',
         {
           user_id: bestUserId,
         },
@@ -541,7 +550,7 @@ export default function FaceAttendance() {
                                     if (!token) throw new Error('No auth token')
 
                                     const res = await axios.post(
-                                      `/api/attendance/checkin_checkout/${member.id}/`,
+                                      `http://127.0.0.1:8000/api/attendance/checkin_checkout/${member.id}/`,
                                       {},
                                       {
                                         headers: {

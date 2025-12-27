@@ -57,7 +57,15 @@ export default function LoginPreview() {
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setIsLoading(true)
     try {
-      const response = await loginAPI(data)
+      const response = await axios.post(
+        'http://127.0.0.1:8000/api/user/login/',
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
 
       if (response.status === 200 && response.data?.deleted) {
         setAccountRecovery({
@@ -66,7 +74,8 @@ export default function LoginPreview() {
         })
       } else if (response.status === 200) {
         const { access, refresh } = response.data
-        const res = await axios.get('/api/user/profile', {
+        console.log(access)
+        const res = await axios.get('http://127.0.0.1:8000/api/user/profile', {
           headers: {
             Authorization: `Bearer ${access}`,
           },

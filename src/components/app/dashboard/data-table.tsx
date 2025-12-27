@@ -124,7 +124,7 @@ const columns: ColumnDef<Member>[] = [
     cell: ({ row }) => (
       <Avatar className="size-10">
         <Image
-          src={`${process.env.API_URL_PREFIX}${row.original.photo}`}
+          src={`${'http://127.0.0.1:8000'}${row.original.photo}`}
           alt={`${row.original.first_name} ${row.original.last_name}`}
           className="object-cover"
           width={100}
@@ -193,7 +193,7 @@ const columns: ColumnDef<Member>[] = [
               QR Code for {row.original.first_name} {row.original.last_name}
             </CardTitle>
             <Image
-              src={process.env.API_URL_PREFIX + qrUrl}
+              src={`http://127.0.0.1:8000${qrUrl}`}
               alt={`QR Code for ${row.original.first_name} ${row.original.last_name}`}
               className="h-40 w-40 object-contain"
               width={256}
@@ -267,7 +267,7 @@ const columns: ColumnDef<Member>[] = [
                 </div>
                 {row.original.membership.qr_url && (
                   <Image
-                    src={`${process.env.API_URL_PREFIX}${row.original.membership.qr_url}`}
+                    src={`${'http://127.0.0.1:8000'}${row.original.membership.qr_url}`}
                     alt="QR"
                     width={100}
                     height={100}
@@ -305,7 +305,7 @@ const columns: ColumnDef<Member>[] = [
                 {/* Photo Section */}
                 <div className="flex flex-shrink-0 flex-col items-center justify-start">
                   <Image
-                    src={`${process.env.API_URL_PREFIX}${row.original.photo}`}
+                    src={`${'http://127.0.0.1:8000'}${row.original.photo}`}
                     alt="Member Photo"
                     className="mb-1 h-[160px] w-[130px] rounded-md object-cover"
                     width={300}
@@ -321,7 +321,7 @@ const columns: ColumnDef<Member>[] = [
               {/* Footer */}
             </div>
             <Link
-              href={`${process.env.API_URL_PREFIX}/api/user/memberships/card/${row.original.membership?.id}/`}
+              href={`${'http://127.0.0.1:8000'}/api/user/memberships/card/${row.original.membership?.id}/`}
               target="_blank"
             >
               <Button variant={'secondary'} className="mx-auto h-10 w-max">

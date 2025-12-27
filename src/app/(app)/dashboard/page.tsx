@@ -25,7 +25,7 @@ const DashboardPage = () => {
     queryFn: async () => {
       const token = session?.user?.access
 
-      const res = await axios.get('/api/user/dashboard/', {
+      const res = await axios.get('http://127.0.0.1:8000/api/user/dashboard/', {
         headers: {
           Authorization: `Bearer ${token}`,
         },

@@ -62,7 +62,7 @@ export const signUpAPI = (data: any) => {
 }
 
 export const loginAPI = (data: { email: string; password: string }) => {
-  return axios.post('/api/user/login/', data, {
+  return axios.post('http:127.0.0.1:8000/api/user/login/', data, {
     headers: {
       'Content-Type': 'application/json',
     },
@@ -119,7 +119,7 @@ export const getAllMembers = async (token: string) => {
 }
 
 export const registerNewMember = async (token: string, data: any) => {
-  return axios.post(`/api/user/register/`, data, {
+  return axios.post(`http://127.0.0.1:8000/api/user/register/`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

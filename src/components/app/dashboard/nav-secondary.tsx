@@ -27,7 +27,6 @@ export function NavSecondary({
   const pathname = usePathname()
   const { profile } = useProfile()
 
-  console.log(profile)
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>
