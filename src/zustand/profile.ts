@@ -47,7 +47,7 @@ type UserAccount = {
   face_embedding?: number[] | null
   fingerprint_template?: string | null
 
-  libraries: library[]
+  library: library
   role: 'super_admin' | 'admin' | 'member'
 
   is_active: boolean

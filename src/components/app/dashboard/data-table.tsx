@@ -453,7 +453,7 @@ export function MembersDataTable() {
   }, [searchValue])
 
   const table = useReactTable({
-    data: members,
+    data: members ?? [],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,

@@ -51,7 +51,7 @@ export interface Member {
   cnic_front: string | File | null
   cnic_back: string | File | null
   about: string | null
-  libraries: any[] // could define Library interface if needed
+  library: any // could define Library interface if needed
   role: 'super_admin' | 'admin' | 'member'
   is_email_verified: boolean
   is_active: boolean

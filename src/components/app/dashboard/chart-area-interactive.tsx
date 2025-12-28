@@ -56,20 +56,20 @@ export function ChartAreaInteractive() {
   }
 
   const chartData = React.useMemo(() => {
+    const safeMembers = members ?? []
+
     let days = 90
     if (timeRange === '30d') days = 30
     if (timeRange === '7d') days = 7
 
     const dateRange = generateDateRange(days)
 
-    // Initialize map
     const counts: Record<string, number> = {}
     dateRange.forEach((date) => {
       counts[date] = 0
     })
 
-    // Count members by created_at date
-    members.forEach((member) => {
+    safeMembers.forEach((member) => {
       const createdDate = new Date(member.created_at).toISOString().slice(0, 10)
 
       if (counts[createdDate] !== undefined) {
@@ -77,7 +77,6 @@ export function ChartAreaInteractive() {
       }
     })
 
-    // Convert to chart format
     return dateRange.map((date) => ({
       date,
       members: counts[date],

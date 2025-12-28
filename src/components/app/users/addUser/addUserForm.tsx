@@ -215,6 +215,8 @@ export default function AddUserForm() {
       console.log(id)
 
       form.setValue('username', `NWL-${id}`)
+    } else {
+      form.setValue('username', `NWL-1`)
     }
   }, [open])
 

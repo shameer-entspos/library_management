@@ -177,7 +177,7 @@ const AttendanceList = () => {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [customDate, setCustomDate] = useState<string | null>(null)
 
-  const { members } = useMemberStore()
+  const members = useMemberStore((state) => state.members) ?? []
 
   const data = useMemo(() => {
     const mapped = members

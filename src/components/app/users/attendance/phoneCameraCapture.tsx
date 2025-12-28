@@ -494,7 +494,7 @@ export default function FaceAttendance() {
                 </div>
               ) : (
                 <div className="flex w-full flex-col items-center justify-center">
-                  <Popover>
+                  {/* <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         size="sm"
@@ -627,7 +627,7 @@ export default function FaceAttendance() {
                       )}
                     </PopoverContent>
                   </Popover>
-                  <p className="mt-4 w-full text-center">OR</p>
+                  <p className="mt-4 w-full text-center">OR</p> */}
                 </div>
               )}
 

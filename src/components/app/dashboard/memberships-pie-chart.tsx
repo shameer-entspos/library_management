@@ -42,10 +42,12 @@ export function ChartPieDonutText() {
   const { members } = useMemberStore()
 
   const chartData = React.useMemo(() => {
+    const safeMembers = members ?? []
+
     let paid = 0
     let unpaid = 0
 
-    members.forEach((member) => {
+    safeMembers.forEach((member) => {
       if (member.membership?.payment_status === 'paid') {
         paid += 1
       } else {
