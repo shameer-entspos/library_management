@@ -52,6 +52,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
 import Image from 'next/image'
+import { useProfile } from '@/zustand/profile'
 
 type Mode = 'register' | 'checkin' | 'checkout'
 type CameraState = 'loading' | 'ready' | 'denied' | 'error'
@@ -98,6 +99,7 @@ export default function FaceAttendance() {
 
   const { members } = useMemberStore()
   const [image, setImage] = useState<any>('')
+  const { profile } = useProfile()
 
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
@@ -272,7 +274,11 @@ export default function FaceAttendance() {
     const imageBase64 = canvas.toDataURL('image/jpeg', 0.95)
     setImage(imageBase64)
 
-    const token = session?.user?.access
+    if (!profile?.access) {
+      toast.error('You are not logged in.')
+      return
+    }
+    const token = profile?.access
 
     if (!token) {
       setStatus('Failed to capture image')
@@ -381,7 +387,11 @@ export default function FaceAttendance() {
   }
 
   const undoAttendance = async () => {
-    const token = session?.user?.access
+    if (!profile?.access) {
+      toast.error('You are not logged in.')
+      return
+    }
+    const token = profile?.access
 
     if (!token) {
       setStatus('Failed to undo attendance')
@@ -546,7 +556,11 @@ export default function FaceAttendance() {
                                   )
 
                                   try {
-                                    const token = session?.user?.access
+                                    if (!profile?.access) {
+                                      toast.error('You are not logged in.')
+                                      return
+                                    }
+                                    const token = profile?.access
                                     if (!token) throw new Error('No auth token')
 
                                     const res = await axios.post(

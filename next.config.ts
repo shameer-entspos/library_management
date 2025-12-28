@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     SECRET_KEY: process.env.SECRET_KEY,
   },
   images: {
+    unoptimized: true,
     dangerouslyAllowSVG: true,
     remotePatterns: [
       {

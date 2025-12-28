@@ -40,7 +40,8 @@ const formSchema = loginFormSchema
 
 export default function LoginPreview() {
   const [isLoading, setIsLoading] = useState(false)
-  const { profile, setUserProfile } = useProfile()
+  const { profile, setUserProfile, updateProfile } = useProfile()
+
   const [accountRecovery, setAccountRecovery] = useState<{
     show: boolean
     message: string
@@ -90,23 +91,27 @@ export default function LoginPreview() {
             return
           }
 
-          const loginRes = await signIn('credentials', {
-            email: data.email,
-            access: access,
-            refresh: refresh,
-            role: user.role,
-            redirect: false,
-          })
+          // const loginRes = await signIn('credentials', {
+          //   email: data.email,
+          //   access: access,
+          //   refresh: refresh,
+          //   role: user.role,
+          //   redirect: false,
+          // })
 
           setUserProfile(user)
-          if (loginRes?.error) {
-            toast.error(loginRes.error)
-            return
-          }
-          if (loginRes?.ok) {
-            toast.success('Login successful!')
-            router.push('/')
-          }
+          updateProfile({
+            access: access,
+          })
+
+          // if (loginRes?.error) {
+          //   toast.error(loginRes.error)
+          //   return
+          // }
+          // if (loginRes?.ok) {
+          //   router.push('/')
+          // }
+          toast.success('Login successful!')
         }
       }
     } catch (error: any) {

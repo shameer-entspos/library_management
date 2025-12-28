@@ -48,6 +48,7 @@ import {
 import Image from 'next/image'
 import axios from 'axios'
 import { SearchableSelect } from '@/components/ui/search-select'
+import { useProfile } from '@/zustand/profile'
 
 const categoryOptions = [
   { label: 'Student', value: 'student' },
@@ -111,6 +112,7 @@ export default function UpdateUserForm({
   setOpen: (open: boolean) => void
 }) {
   const queryClient = useQueryClient()
+  const { profile } = useProfile()
 
   const [registered, setRegistered] = useState<{
     success: boolean
@@ -159,7 +161,11 @@ export default function UpdateUserForm({
   }, [form])
 
   async function onSubmit(values: AddUserFormValues) {
-    const token = session?.user?.access
+    if (!profile?.access) {
+      toast.error('You are not logged in.')
+      return
+    }
+    const token = profile?.access
     setLoading(true)
 
     try {

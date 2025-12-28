@@ -53,6 +53,7 @@ type UserAccount = {
   is_active: boolean
   is_staff: boolean
   created_at: string
+  access: string
 }
 
 type UserState = {

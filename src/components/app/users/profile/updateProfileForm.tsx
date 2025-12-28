@@ -86,7 +86,7 @@ export default function UpdateProfileForm() {
         if (value) formData.append(key, value as any)
       })
 
-      await axios.patch('/api/users/profile/', formData)
+      await axios.patch('http://127.0.0.1:8000/api/users/profile/', formData)
 
       toast.success('Profile updated successfully')
     } catch (err: any) {

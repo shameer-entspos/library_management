@@ -93,6 +93,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import Link from 'next/link'
+import { useProfile } from '@/zustand/profile'
 
 // Define columns using your actual Member type
 const columns: ColumnDef<Member>[] = [
@@ -358,16 +359,24 @@ const Actions = ({ member }: { member: any }) => {
   const [open, setOpen] = React.useState(false)
   const [deleteModel, setOpenDeleteModal] = React.useState(false)
   const { data: session }: any = useSession()
+  const { profile } = useProfile()
   const queryClient = useQueryClient()
 
   const handleDelete = async () => {
-    const token = session?.user?.access
+    if (!profile?.access) {
+      toast.error('You are not logged in.')
+      return
+    }
+    const token = profile?.access
     try {
-      const res = await axios.delete(`/api/user/update/${member.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const res = await axios.delete(
+        `http://127.0.0.1:8000/api/user/update/${member.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
 
       if (res.status === 200) {
         toast.success('Member deleted successfully!')

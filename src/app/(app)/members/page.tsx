@@ -9,16 +9,23 @@ import { useQuery } from '@tanstack/react-query'
 import { getAllMembers } from '@/lib/api'
 import { useSession } from 'next-auth/react'
 import axios from 'axios'
+import { useProfile } from '@/zustand/profile'
+import { toast } from 'sonner'
 
 const MembersPage = () => {
   const { data: session }: any = useSession()
   const { members, setMembers } = useMemberStore()
+  const { profile } = useProfile()
 
   const { data, isLoading, isSuccess } = useQuery({
     queryKey: ['members'],
-    enabled: !!session?.user,
+    enabled: !!profile,
     queryFn: async () => {
-      const token = session?.user?.access
+      if (!profile?.access) {
+        toast.error('You are not logged in.')
+        return
+      }
+      const token = profile?.access
 
       const res = await axios.get('http://127.0.0.1:8000/api/user/dashboard/', {
         headers: {

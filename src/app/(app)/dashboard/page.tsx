@@ -3,13 +3,16 @@ import { ChartAreaInteractive } from '@/components/app/dashboard/chart-area-inte
 import { ChartPieDonutText } from '@/components/app/dashboard/memberships-pie-chart'
 import { SectionCards } from '@/components/app/dashboard/section-cards'
 import { useMemberStore } from '@/zustand/members'
+import { useProfile } from '@/zustand/profile'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { useSession } from 'next-auth/react'
 import React from 'react'
+import { toast } from 'sonner'
 
 const DashboardPage = () => {
   const { data: session }: any = useSession()
+  const { profile } = useProfile()
   const { members, setMembers } = useMemberStore()
   const [totalmembers, setTotalMembers] = React.useState(0)
   const [stats, setStats] = React.useState({
@@ -21,9 +24,13 @@ const DashboardPage = () => {
 
   const { data, isLoading, isSuccess } = useQuery({
     queryKey: ['members'],
-    enabled: !!session?.user,
+    enabled: !!profile,
     queryFn: async () => {
-      const token = session?.user?.access
+      if (!profile?.access) {
+        toast.error('You are not logged in.')
+        return
+      }
+      const token = profile?.access
 
       const res = await axios.get('http://127.0.0.1:8000/api/user/dashboard/', {
         headers: {

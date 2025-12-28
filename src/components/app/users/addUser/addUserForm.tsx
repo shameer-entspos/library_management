@@ -43,6 +43,7 @@ import axios from 'axios'
 import { SearchableSelect } from '@/components/ui/search-select'
 import { useMemberStore } from '@/zustand/members'
 import { IoCamera } from 'react-icons/io5'
+import { useProfile } from '@/zustand/profile'
 
 const categoryOptions = [
   { label: 'Student', value: 'student' },
@@ -123,6 +124,7 @@ export default function AddUserForm() {
   const [status, setStatus] = useState<React.ReactNode>(
     'Enter phone IP and connect...'
   )
+  const { profile } = useProfile()
   const [isProcessing, setIsProcessing] = useState(false)
   const [image, setImage] = useState('')
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
@@ -222,7 +224,11 @@ export default function AddUserForm() {
   }, [open])
 
   async function onSubmit(values: AddUserFormValues) {
-    const token = session?.user?.access
+    if (!profile?.access) {
+      toast.error('You are not logged in.')
+      return
+    }
+    const token = profile?.access
     setLoading(true)
 
     try {
