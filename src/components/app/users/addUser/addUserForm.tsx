@@ -37,13 +37,14 @@ import { registerNewMember } from '@/lib/api'
 import { useSession } from 'next-auth/react'
 import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, Loader2, Plus, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle, Loader2, Plus, XCircle } from 'lucide-react'
 import Image from 'next/image'
 import axios from 'axios'
 import { SearchableSelect } from '@/components/ui/search-select'
 import { useMemberStore } from '@/zustand/members'
 import { IoCamera } from 'react-icons/io5'
 import { useProfile } from '@/zustand/profile'
+import { useOnlineStatus } from '@/hooks/use-online'
 
 const categoryOptions = [
   { label: 'Student', value: 'student' },
@@ -130,6 +131,12 @@ export default function AddUserForm() {
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
 
+  const [serverUser, setServerUser] = useState({})
+  const [serverUserId, setServerUserId] = useState('')
+  const [faceEmbeddings, setFaceEmbeddings] = useState(null)
+
+  const isOnline = useOnlineStatus()
+
   const form = useForm<AddUserFormValues>({
     resolver: zodResolver(addUserSchema),
     defaultValues: {
@@ -146,17 +153,29 @@ export default function AddUserForm() {
     },
   })
 
-  const startCamera = async () => {
+  const loadVideoDevices = async () => {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const cams = devices.filter((d) => d.kind === 'videoinput')
+
+    // reverse if you want external camera first
+    const reversed = [...cams].reverse()
+
+    setVideoDevices(reversed)
+
+    if (reversed.length && !selectedDeviceId) {
+      setSelectedDeviceId(reversed[0].deviceId)
+    }
+  }
+
+  const startCamera = async (deviceId?: string) => {
     try {
-      // stop previous stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop())
         streamRef.current = null
       }
 
-      // IMPORTANT: no deviceId at all
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: deviceId ? { deviceId: { exact: deviceId } } : true,
       })
 
       streamRef.current = stream
@@ -169,12 +188,11 @@ export default function AddUserForm() {
       setStatus('Camera ready! Look straight at the camera')
     } catch (err: any) {
       console.error(err)
-
-      if (err.name === 'NotAllowedError') {
-        setStatus('Camera permission denied')
-      } else {
-        setStatus('Camera not available')
-      }
+      setStatus(
+        err.name === 'NotAllowedError'
+          ? 'Camera permission denied'
+          : 'Camera not available'
+      )
     }
   }
 
@@ -201,21 +219,24 @@ export default function AddUserForm() {
   // }, [form])
 
   useEffect(() => {
-    if (registered.tab === 'scan_image') {
-      startCamera()
+    if (registered.tab === 'scan_image' && open) {
+      const init = async () => {
+        await loadVideoDevices()
+      }
+      init()
     }
   }, [registered.tab, open])
 
   useEffect(() => {
-    stopCamera()
-  }, [])
+    if (selectedDeviceId && registered.tab === 'scan_image') {
+      startCamera(selectedDeviceId)
+    }
+  }, [selectedDeviceId])
 
   useEffect(() => {
-    console.log('OPENED')
     // get latest member id
     if (members.length > 0) {
       const id = members.length + 1
-      console.log(id)
 
       form.setValue('username', `NWL-${id}`)
     } else {
@@ -248,6 +269,8 @@ export default function AddUserForm() {
 
         setUser(user)
         setUserId(user.id.toString())
+
+        serverSubmit(values)
       } else if (res.status === 200) {
         toast.error(res.data.message || 'Email or username already exists.')
       } else {
@@ -256,6 +279,36 @@ export default function AddUserForm() {
     } catch (error) {
       console.error('Form submission error', error)
       toast.error('Failed to register. Check your internet connection.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function serverSubmit(values: AddUserFormValues) {
+    if (!profile?.access) {
+      toast.error('You are not logged in.')
+      return
+    }
+    const token = profile?.server_key
+
+    try {
+      const res = await axios.post(
+        'http://192.168.100.85:8000/api/user/backup-user/',
+        values,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      if (res.status === 201) {
+        const { user } = res.data
+
+        setServerUser(user)
+        setServerUserId(user.id.toString())
+      }
+    } catch (error) {
+      console.error('Form submission error', error)
     } finally {
       setLoading(false)
     }
@@ -332,6 +385,8 @@ export default function AddUserForm() {
         pdfGenerated: res.data.pdf_generated,
       })
 
+      const embeddings = res.data.face_embeddings
+
       stopCamera()
 
       setStatus(
@@ -343,6 +398,50 @@ export default function AddUserForm() {
           <div className="mt-2 text-lg">{res.data.user || 'User'}</div>
         </div>
       )
+
+      captureAndSendServer(imageBase64, embeddings)
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Operation failed. Try again.'
+      setStatus(
+        <div className="text-center">
+          <XCircle className="mx-auto mb-4 h-16 w-16 text-red-500" />
+          <div className="text-xl font-bold text-red-600">{msg}</div>
+        </div>
+      )
+    } finally {
+      queryClient.refetchQueries({ queryKey: ['members'] })
+    }
+
+    setIsProcessing(false)
+  }
+
+  const captureAndSendServer = async (imageBase64: any, embeddings: any) => {
+    try {
+      if (!serverUserId.trim()) {
+        return
+      }
+
+      const res = await axios.post(
+        'http://192.168.100.85:8000/api/attendance/face/backup-register/',
+        {
+          user_id: parseInt(serverUserId),
+          image: imageBase64,
+          embeddings: embeddings,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${profile?.server_key}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+
+      setRegistered({
+        success: true,
+        tab: 'qr_code',
+        qrUrl: res.data.qr_url,
+        pdfGenerated: res.data.pdf_generated,
+      })
     } catch (err: any) {
       const msg = err.response?.data?.error || 'Operation failed. Try again.'
       setStatus(
@@ -376,14 +475,18 @@ export default function AddUserForm() {
               qrUrl: null,
               pdfGenerated: false,
             })
-            form.reset()
+            // form.reset()
             setLoading(false)
           }, 200)
         }
       }}
     >
       <DialogTrigger asChild onClick={() => setOpen(true)}>
-        <Button variant="default" className="h-9! text-white">
+        <Button
+          variant="default"
+          disabled={!isOnline}
+          className="h-9! text-white"
+        >
           <Plus />
           <span className="hidden sm:inline-block">Add Member</span>
         </Button>
@@ -391,251 +494,15 @@ export default function AddUserForm() {
 
       <DialogContent
         showCloseButton={false}
-        className={` ${registered.tab === 'scan_image' && 'max-h-[96vh]! sm:max-w-2xl!'} px-4! md:px-6!`}
+        className={` ${registered.tab === 'scan_image' && 'max-h-[96vh]! sm:max-w-2xl!'} overflow-auto px-4! md:px-6!`}
       >
         <DialogHeader>
           <DialogTitle>
-            {registered.success && registered.tab === 'qr_code'
-              ? 'Registration Complete'
-              : registered.success && registered.tab === 'scan_image'
-                ? `Register Face for ${user?.first_name || 'Member'}`
-                : 'Add New Member'}
-          </DialogTitle>
-          <DialogDescription>
-            {registered.success && registered.tab === 'qr_code'
-              ? 'Scan the QR code below to access their membership.'
-              : registered.success && registered.tab === 'scan_image'
-                ? 'Use the camera to capture and register the member’s face.'
-                : 'Fill the form to register a new member.'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex h-full w-full flex-col items-center overflow-auto xl:justify-center">
-          <div className="w-full">
-            {registered.tab === 'register' ? (
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-6"
-                >
-                  {/* Username & Email */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Member ID</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Auto generated" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* First & Last Name */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="first_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>First Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="last_name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Last Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Phone & Gender */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="phone_no"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone</FormLabel>
-                          <FormControl>
-                            <Input placeholder="03XXXXXXXXX" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="gender"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Gender</FormLabel>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="h-10! w-full">
-                                <SelectValue placeholder="Select gender" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="male">Male</SelectItem>
-                              <SelectItem value="female">Female</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Category & Age Group */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category</FormLabel>
-                          <SearchableSelect
-                            value={field.value}
-                            onChange={field.onChange}
-                            options={categoryOptions}
-                            placeholder="Select category"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="age_group"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Age Group</FormLabel>
-                          <SearchableSelect
-                            value={field.value}
-                            onChange={field.onChange}
-                            options={ageGroupOptions}
-                            placeholder="Select age group"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* City & Country (INPUT) */}
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="country"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Country</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Pakistan" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* CNIC */}
-                  <FormField
-                    control={form.control}
-                    name="cnic"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>CNIC</FormLabel>
-                        <FormControl>
-                          <Input placeholder="xxxxx-xxxxxxx-x" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Address */}
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mailing Address</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Footer */}
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button variant="outline" size="lg">
-                        Close
-                      </Button>
-                    </DialogClose>
-
-                    <Button type="submit" size="lg">
-                      {loading ? 'Adding...' : 'Add Member'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            ) : registered.tab === 'scan_image' ? (
-              <div className="flex flex-col gap-4">
+            {registered.success && registered.tab === 'qr_code' ? (
+              'Registration Complete'
+            ) : registered.success && registered.tab === 'scan_image' ? (
+              <>
+                {' '}
                 {videoDevices.length > 0 && (
                   <Select
                     value={selectedDeviceId ?? ''}
@@ -657,80 +524,329 @@ export default function AddUserForm() {
                     </SelectContent>
                   </Select>
                 )}
-                <div className="relative mx-auto h-[350px] w-full max-w-2xl rounded-3xl bg-black sm:h-[550px] sm:w-[406px]">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="h-full w-full rounded-3xl object-cover"
-                  />
-                  <Button
-                    size={'lg'}
-                    onClick={captureAndSend}
-                    className="absolute -bottom-7 left-1/2 mx-auto flex size-14 -translate-x-1/2 transform items-center gap-2 rounded-3xl rounded-full bg-linear-to-br text-sm font-bold text-white backdrop-blur-sm transition-all hover:scale-105"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="h-12 w-12 animate-spin" />
-                      </>
-                    ) : (
-                      <IoCamera className="size-8" />
-                    )}
-                  </Button>
-                </div>{' '}
-                {/* Status */}
-                <div className="mx-auto mt-5 inline-block rounded-2xl">
-                  <>
-                    {typeof status === 'string' ? (
-                      <p className="text-foreground text-sm md:text-lg">
-                        {status}
-                      </p>
-                    ) : (
-                      status
-                    )}
-                  </>
-                </div>
-              </div>
-            ) : registered.tab === 'qr_code' ? (
-              <>
-                <div className="flex flex-col justify-center gap-4 text-center">
-                  {registered.qrUrl ? (
-                    <>
-                      <Image
-                        src={`${process.env.API_URL_PREFIX}${registered.qrUrl}`}
-                        alt="Member QR Code"
-                        className="h-64 w-64 object-contain"
-                        width={256}
-                        height={256}
-                      />
-                    </>
-                  ) : (
-                    <p>No QR available (PDF generation failed).</p>
-                  )}
-                </div>
-
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="outline" size="lg">
-                      Close
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
               </>
             ) : (
-              <>
-                {(() =>
-                  setRegistered({
-                    success: false,
-                    tab: 'register',
-                    qrUrl: null,
-                    pdfGenerated: false,
-                  }))()}
-              </>
+              'Add New Member'
             )}
+          </DialogTitle>
+          <DialogDescription>
+            {registered.success && registered.tab === 'qr_code'
+              ? 'Scan the QR code below to access their membership.'
+              : registered.success && registered.tab === 'scan_image'
+                ? 'Use the camera to capture and register the member’s face.'
+                : 'Fill the form to register a new member.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {!isOnline ? (
+          <div className="flex min-h-28 w-full flex-col items-center justify-center gap-4">
+            <AlertCircle className="text-muted-foreground size-6" />
+            <p className="text-muted-foreground w-full text-center">
+              You are currently offline!
+            </p>
           </div>
-        </div>
+        ) : (
+          <div className="flex h-full w-full flex-col items-center overflow-auto xl:justify-center">
+            <div className="w-full">
+              {registered.tab === 'register' ? (
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-6"
+                  >
+                    {/* Username & Email */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Member ID</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Auto generated" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                              <Input type="email" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* First & Last Name */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="first_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="last_name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Phone & Gender */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="phone_no"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone</FormLabel>
+                            <FormControl>
+                              <Input placeholder="03XXXXXXXXX" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="gender"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Gender</FormLabel>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="h-10! w-full">
+                                  <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Category & Age Group */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Category</FormLabel>
+                            <SearchableSelect
+                              value={field.value}
+                              onChange={field.onChange}
+                              options={categoryOptions}
+                              placeholder="Select category"
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="age_group"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Age Group</FormLabel>
+                            <SearchableSelect
+                              value={field.value}
+                              onChange={field.onChange}
+                              options={ageGroupOptions}
+                              placeholder="Select age group"
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* City & Country (INPUT) */}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="country"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Country</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Pakistan" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* CNIC */}
+                    <FormField
+                      control={form.control}
+                      name="cnic"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>CNIC</FormLabel>
+                          <FormControl>
+                            <Input placeholder="xxxxx-xxxxxxx-x" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Address */}
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mailing Address</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Footer */}
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="outline" size="lg">
+                          Close
+                        </Button>
+                      </DialogClose>
+
+                      <Button type="submit" size="lg">
+                        {loading ? 'Adding...' : 'Add Member'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
+              ) : registered.tab === 'scan_image' ? (
+                <div className="flex flex-col gap-4">
+                  <div className="relative mx-auto h-[350px] w-full max-w-2xl rounded-3xl bg-black sm:h-[550px] sm:w-[406px]">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="h-full w-full rounded-3xl object-cover"
+                    />
+                    <Button
+                      size={'lg'}
+                      onClick={captureAndSend}
+                      className="absolute bottom-9 left-1/2 mx-auto flex size-14 -translate-x-1/2 transform items-center gap-2 rounded-3xl rounded-full bg-linear-to-br text-sm font-bold text-white backdrop-blur-sm transition-all hover:scale-105"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="h-12 w-12 animate-spin" />
+                        </>
+                      ) : (
+                        <IoCamera className="size-8" />
+                      )}
+                    </Button>
+                  </div>{' '}
+                  {/* Status */}
+                  <div className="mx-auto mt-5 inline-block rounded-2xl">
+                    <>
+                      {typeof status === 'string' ? (
+                        <p className="text-foreground text-sm md:text-lg">
+                          {status}
+                        </p>
+                      ) : (
+                        status
+                      )}
+                    </>
+                  </div>
+                </div>
+              ) : registered.tab === 'qr_code' ? (
+                <>
+                  <div className="flex flex-col justify-center gap-4 text-center">
+                    {registered.qrUrl ? (
+                      <>
+                        <Image
+                          src={`http://192.168.100.85:8000${registered.qrUrl}`}
+                          alt="Member QR Code"
+                          className="h-64 w-64 object-contain"
+                          width={256}
+                          height={256}
+                        />
+                      </>
+                    ) : (
+                      <p>No QR available (PDF generation failed).</p>
+                    )}
+                  </div>
+
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="outline" size="lg">
+                        Close
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </>
+              ) : (
+                <>
+                  {(() =>
+                    setRegistered({
+                      success: false,
+                      tab: 'register',
+                      qrUrl: null,
+                      pdfGenerated: false,
+                    }))()}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

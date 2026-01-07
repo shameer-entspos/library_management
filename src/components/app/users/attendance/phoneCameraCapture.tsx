@@ -11,6 +11,8 @@ import {
   Loader2,
   UserPlus,
   Check,
+  CloudCog,
+  Settings,
 } from 'lucide-react'
 import {
   Select,
@@ -19,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
 import { Button } from '@/components/ui/button'
 import { usePathname } from 'next/navigation'
 import { Input } from '@/components/ui/input'
@@ -108,77 +111,32 @@ export default function FaceAttendance() {
   const [bestUserId, setBestUserId] = useState<any>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // const loadVideoDevices = async () => {
-  //   const devices = await navigator.mediaDevices.enumerateDevices()
-  //   console.log(devices)
-  //   const cams = devices.filter((d) => d.kind === 'videoinput')
-  //   setVideoDevices(cams)
-
-  //   // auto-select first camera
-  //   if (cams.length && !selectedDeviceId) {
-  //     setSelectedDeviceId(cams[0].deviceId)
-  //   }
-  // }
-
   const loadVideoDevices = async () => {
     const devices = await navigator.mediaDevices.enumerateDevices()
-    setVideoDevices(devices.filter((d) => d.kind === 'videoinput'))
+    const cams = devices.filter((d) => d.kind === 'videoinput')
+
+    const reversedCams = [...cams].reverse()
+    setVideoDevices(reversedCams)
+
+    if (reversedCams.length) {
+      const firstDeviceId = reversedCams[0].deviceId
+      setSelectedDeviceId(firstDeviceId)
+      return firstDeviceId
+    }
+
+    return null
   }
 
-  // const startCamera = async (deviceId?: string) => {
-  //   try {
-  //     // stop previous stream
-  //     if (streamRef.current) {
-  //       streamRef.current.getTracks().forEach((t) => t.stop())
-  //       streamRef.current = null
-  //     }
-
-  //     const stream = await navigator.mediaDevices.getUserMedia({
-  //       video: {
-  //         deviceId: deviceId ? { exact: deviceId } : undefined,
-  //         width: { ideal: 1280 },
-  //         height: { ideal: 720 },
-  //         frameRate: { ideal: 30 },
-  //       },
-  //     })
-
-  //     streamRef.current = stream
-
-  //     if (videoRef.current) {
-  //       videoRef.current.srcObject = stream
-  //       await videoRef.current.play()
-  //     }
-
-  //     setCameraState('ready')
-  //     setStatus('Camera ready! Look straight at the camera')
-  //   } catch (err) {
-  //     console.error(err)
-  //     setCameraState('error')
-  //     setStatus('Failed to access camera')
-  //   }
-  // }
-
-  const startCamera = async () => {
+  const startCamera = async (deviceId?: string) => {
     try {
-      // stop previous stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop())
         streamRef.current = null
       }
 
-      // IMPORTANT: no deviceId at all
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: deviceId ? { deviceId: { exact: deviceId } } : true,
       })
-      const devices = await navigator.mediaDevices.enumerateDevices()
-
-      // Filter only video input devices (cameras)
-      const videoDevices = devices.filter(
-        (device) => device.kind === 'videoinput'
-      )
-
-      console.log('All devices:', devices)
-      console.log('Video input devices:', videoDevices)
 
       streamRef.current = stream
 
@@ -188,38 +146,25 @@ export default function FaceAttendance() {
       }
 
       setCameraState('ready')
-      setStatus('Camera ready! Look straight at the camera')
-    } catch (err: any) {
+      setStatus('Camera ready')
+    } catch (err) {
       console.error(err)
-
-      if (err.name === 'NotAllowedError') {
-        setCameraState('denied')
-        setStatus('Camera permission denied')
-      } else {
-        setCameraState('error')
-        setStatus('Camera not available')
-      }
+      setCameraState('error')
+      setStatus('Camera not available')
     }
   }
 
-  // useEffect(() => {
-  //   loadVideoDevices()
-
-  //   return () => {
-  //     if (streamRef.current) {
-  //       streamRef.current.getTracks().forEach((t) => t.stop())
-  //       streamRef.current = null
-  //     }
-  //   }
-  // }, [])
-
   useEffect(() => {
-    startCamera()
+    const initCamera = async () => {
+      const firstDeviceId = await loadVideoDevices()
+      await startCamera(firstDeviceId || undefined)
+    }
+
+    initCamera()
 
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
       }
     }
   }, [])
@@ -494,13 +439,13 @@ export default function FaceAttendance() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 py-4 md:gap-6 md:py-6">
+      <div className="flex flex-1 flex-col gap-4 py-4 pt-0! md:gap-6 md:py-6">
         <div className="h-full px-4 lg:px-6">
           <>
             <div className="mx-auto h-full space-y-2">
               {/* User ID for Registration */}
               {mode === 'register' ? (
-                <div className="mx-auto max-w-md">
+                <div className="mx-auto mt-2 max-w-md">
                   <SearchableSelect
                     value={userId}
                     onChange={(value) => setUserId(value as string)}
@@ -512,155 +457,49 @@ export default function FaceAttendance() {
                   />{' '}
                 </div>
               ) : (
-                <div className="flex w-full flex-col items-center justify-center">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant={'outline'}
-                        className="mx-auto w-max text-wrap wrap-break-word"
-                      >
-                        Select Member
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-4">
-                      <div className="flex">
-                        <CardTitle className="mb-2 flex-shrink-0 text-sm">
-                          Members
-                        </CardTitle>
-                      </div>
-                      <Input
-                        type="text"
-                        placeholder="Search"
-                        value={searchQuery}
-                        className="mb-2 h-8 flex-1 text-xs!"
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                      <div className="max-h-96 space-y-1 overflow-y-auto">
-                        {filtered ? (
-                          filtered.map((member) => {
-                            const lastAttendance = getLatestAttendance(
-                              member.attendances
-                            )
-                            const lastAction = getLatestAction(lastAttendance)
-                            return (
-                              <Button
-                                key={member.id}
-                                variant="outline"
-                                className="w-full justify-start px-2!"
-                                onClick={async () => {
-                                  setIsProcessing(true)
-                                  setOpen(true)
-                                  setStatus(
-                                    <Loader2 className="mx-auto h-8 w-8 animate-spin" />
-                                  )
-
-                                  try {
-                                    if (!profile?.access) {
-                                      toast.error('You are not logged in.')
-                                      return
-                                    }
-                                    const token = profile?.access
-                                    if (!token) throw new Error('No auth token')
-
-                                    const res = await axios.post(
-                                      `http://127.0.0.1:8000/api/attendance/checkin_checkout/${member.id}/`,
-                                      {},
-                                      {
-                                        headers: {
-                                          Authorization: `Bearer ${token}`,
-                                        },
-                                      }
-                                    )
-
-                                    const isCheckIn =
-                                      res.data.message.includes('In')
-                                    setBestUserId(member.id)
-                                    setStatus(
-                                      <div className="text-center">
-                                        <div
-                                          className={`text-lg font-bold ${
-                                            isCheckIn
-                                              ? 'text-green-600'
-                                              : 'text-blue-500'
-                                          }`}
-                                        >
-                                          {res.data.user}
-                                        </div>
-                                        <div className="text-muted-foreground mt-1 text-sm">
-                                          {res.data.message}
-                                        </div>
-                                        {res.data.duration && (
-                                          <div className="text-foreground mt-1 text-sm">
-                                            Duration: {res.data.duration}
-                                          </div>
-                                        )}
-                                      </div>
-                                    )
-                                  } catch (err: any) {
-                                    const msg =
-                                      err.response?.data?.error ||
-                                      'Operation failed. Try again.'
-                                    setStatus(
-                                      <div className="text-center text-red-600">
-                                        {msg}
-                                      </div>
-                                    )
-                                  } finally {
-                                    setIsProcessing(false)
-                                  }
-                                }}
-                              >
-                                <Image
-                                  src={`${process.env.API_URL_PREFIX}${member.photo}`}
-                                  alt={
-                                    member.first_name + ' ' + member.last_name
-                                  }
-                                  className="size-8 rounded-full object-cover"
-                                  width={32}
-                                  height={32}
-                                />
-                                <div className="flex flex-col items-start">
-                                  <span>
-                                    {member.first_name} {member.last_name}
-                                  </span>
-                                  <span className="text-muted-foreground text-xs">
-                                    {lastAction
-                                      ? new Date(lastAction)?.toLocaleString()
-                                      : '-'}
-                                  </span>
-                                </div>
-                              </Button>
-                            )
-                          })
-                        ) : (
-                          <span className="text-muted-foreground w-full text-center text-sm">
-                            No members
-                          </span>
-                        )}
-                      </div>
-
-                      {status &&
-                      status === 'Camera ready! Look straight at the camera' ? (
-                        ''
-                      ) : (
-                        <div className="text-foreground mt-4 rounded-lg bg-gray-100 p-2 text-center text-sm">
-                          {status}
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                  <p className="mt-4 w-full text-center">OR</p>
-                </div>
+                <div className="flex w-full flex-col items-center justify-center"></div>
               )}
 
-              <div className="text-foreground/80 mx-auto w-full text-center">
+              <div className="text-foreground/80 mx-auto flex w-full items-center justify-center text-center">
                 {'Click capture button to '}
                 {mode === 'register'
                   ? 'Register Face'
                   : mode === 'checkin'
                     ? 'Checkin/Checkout'
                     : 'Check Out Now'}
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size={'icon'}
+                      variant="ghost"
+                      className="ml-2 flex gap-2"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent align="start" className="w-64">
+                    {videoDevices.map((device, index) => (
+                      <DropdownMenuItem
+                        key={device.deviceId}
+                        onClick={() => {
+                          setSelectedDeviceId(device.deviceId)
+                          startCamera(device.deviceId)
+                        }}
+                        className="flex justify-between"
+                      >
+                        <span className="truncate">
+                          {device.label || `Camera ${index + 1}`}
+                        </span>
+
+                        {selectedDeviceId === device.deviceId && (
+                          <Check className="h-4 w-4" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <div className="relative mx-auto h-[500px] min-h-96 w-full max-w-2xl rounded-3xl bg-black sm:h-[600px] sm:w-[466px]">
                 <video
@@ -676,7 +515,7 @@ export default function FaceAttendance() {
                   disabled={
                     isProcessing || (mode === 'register' && !userId.trim())
                   }
-                  className={`absolute -bottom-7 left-1/2 mx-auto flex size-14 -translate-x-1/2 transform items-center gap-2 rounded-3xl bg-linear-to-br text-sm font-bold text-white backdrop-blur-sm transition-all hover:scale-105 ${
+                  className={`absolute bottom-8 left-1/2 mx-auto flex size-14 -translate-x-1/2 transform items-center gap-2 rounded-full bg-linear-to-br text-sm font-bold text-white backdrop-blur-sm transition-all hover:scale-105 ${
                     isProcessing || (mode === 'register' && !userId.trim())
                       ? 'cursor-not-allowed from-gray-600 to-gray-800'
                       : mode === 'register'

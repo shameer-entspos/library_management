@@ -47,13 +47,14 @@ type UserAccount = {
   face_embedding?: number[] | null
   fingerprint_template?: string | null
 
-  libraries: library[]
+  library: library
   role: 'super_admin' | 'admin' | 'member'
 
   is_active: boolean
   is_staff: boolean
   created_at: string
   access: string
+  server_key: string
 }
 
 type UserState = {

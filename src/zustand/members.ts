@@ -61,6 +61,7 @@ export interface Member {
   fingerprint_template: string | null
   membership: any
   attendances: any
+  is_synced: boolean
 }
 
 interface MemberStore {

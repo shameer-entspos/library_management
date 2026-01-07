@@ -39,7 +39,6 @@ const DashboardPage = () => {
       })
 
       if (res.status === 200) {
-        console.log(res.data)
         setStats(res.data.stats)
         setTotalMembers(res.data.count)
         setMembers(res.data.members)

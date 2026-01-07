@@ -266,7 +266,7 @@ const columns: ColumnDef<Member>[] = [
                     GOVERNMENT OF Punjab
                   </p>
                 </div>
-                {row.original.membership.qr_url && (
+                {row.original.membership.qr_url ? (
                   <Image
                     src={`${'http://127.0.0.1:8000'}${row.original.membership.qr_url}`}
                     alt="QR"
@@ -274,6 +274,8 @@ const columns: ColumnDef<Member>[] = [
                     height={100}
                     className="size-16 scale-110"
                   />
+                ) : (
+                  <div className="size-16"></div>
                 )}
               </div>
 
@@ -499,7 +501,7 @@ export function MembersDataTable() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2">
+        <div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">

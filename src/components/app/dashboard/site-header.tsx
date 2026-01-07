@@ -3,6 +3,8 @@ import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { usePathname } from 'next/navigation'
 import AddUserForm from '../users/addUser/addUserForm'
+import { Badge } from '@/components/ui/badge'
+import SyncService from '@/utils/syncService'
 
 export function SiteHeader() {
   const pathname = usePathname()
@@ -25,6 +27,7 @@ export function SiteHeader() {
           {pathname === '/' ? 'Dashboard' : pathname.split('/').pop()}
         </h1>
         <div className="ml-auto flex items-center gap-2">
+          <SyncService />
           <AddUserForm />
         </div>
       </div>

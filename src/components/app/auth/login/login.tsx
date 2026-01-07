@@ -75,7 +75,7 @@ export default function LoginPreview() {
         })
       } else if (response.status === 200) {
         const { access, refresh } = response.data
-        console.log(access)
+
         const res = await axios.get('http://127.0.0.1:8000/api/user/profile', {
           headers: {
             Authorization: `Bearer ${access}`,
@@ -91,32 +91,53 @@ export default function LoginPreview() {
             return
           }
 
-          // const loginRes = await signIn('credentials', {
-          //   email: data.email,
-          //   access: access,
-          //   refresh: refresh,
-          //   role: user.role,
-          //   redirect: false,
-          // })
-
           setUserProfile(user)
           updateProfile({
             access: access,
           })
 
-          // if (loginRes?.error) {
-          //   toast.error(loginRes.error)
-          //   return
-          // }
-          // if (loginRes?.ok) {
-          //   router.push('/')
-          // }
+          router.push('/dashboard')
           toast.success('Login successful!')
+
+          serverLogin(data)
         }
       }
     } catch (error: any) {
       console.log(error?.response)
       toast.error(`Login Error ${error?.response?.data?.message ?? ''}`)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const serverLogin = async (data: z.infer<typeof formSchema>) => {
+    setIsLoading(true)
+    try {
+      const response = await axios.post(
+        'http://192.168.100.85:8000/api/user/login/',
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      )
+
+      if (response.status === 200 && response.data?.deleted) {
+        setAccountRecovery({
+          show: true,
+          message: response.data.message,
+        })
+      } else if (response.status === 200) {
+        const { access, refresh } = response.data
+
+        updateProfile({
+          server_key: access,
+        })
+      }
+    } catch (error: any) {
+      console.log(error?.response)
+      toast.error(`Server Login Error ${error?.response?.data?.message ?? ''}`)
     } finally {
       setIsLoading(false)
     }
@@ -149,7 +170,6 @@ export default function LoginPreview() {
                           id="email"
                           placeholder="johndoe@mail.com"
                           type="email"
-                          autoComplete="email"
                           {...field}
                         />
                       </FormControl>
@@ -176,7 +196,6 @@ export default function LoginPreview() {
                           id="password"
                           className="h-12!"
                           placeholder="******"
-                          autoComplete="current-password"
                           {...field}
                         />
                       </FormControl>
@@ -197,6 +216,11 @@ export default function LoginPreview() {
               Register
             </Link>
           </div> */}
+          <div className="flex justify-center p-2">
+            <Link href={'/register-with-token'}>
+              <Button variant={'link'}>Create account</Button>
+            </Link>
+          </div>
         </CardContent>
       </div>
     </div>

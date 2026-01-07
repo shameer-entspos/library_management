@@ -55,16 +55,16 @@ export default function LibraryForm() {
 
   useEffect(() => {
     form.reset({
-      name: profile?.libraries[0]?.name ?? '',
-      code: profile?.libraries[0]?.code ?? '',
-      address: profile?.libraries[0]?.address ?? '',
-      phone: profile?.libraries[0]?.phone ?? '',
-      email: profile?.libraries[0]?.email ?? '',
-      opening_time: profile?.libraries[0]?.opening_time ?? '',
-      closing_time: profile?.libraries[0]?.closing_time ?? '',
-      is_active: profile?.libraries[0]?.is_active ?? true,
+      name: profile?.library?.name ?? '',
+      code: profile?.library?.code ?? '',
+      address: profile?.library?.address ?? '',
+      phone: profile?.library?.phone ?? '',
+      email: profile?.library?.email ?? '',
+      opening_time: profile?.library?.opening_time ?? '',
+      closing_time: profile?.library?.closing_time ?? '',
+      is_active: profile?.library?.is_active ?? true,
     })
-  }, [profile?.libraries[0]])
+  }, [profile?.library])
 
   const onSubmit = async (data: LibraryFormValues) => {
     setIsLoading(true)
@@ -203,7 +203,7 @@ export default function LibraryForm() {
             <Button type="submit" size={'lg'} disabled={isLoading}>
               {isLoading
                 ? 'Saving...'
-                : profile?.libraries[0]?.id
+                : profile?.library?.id
                   ? 'Update Library'
                   : 'Create Library'}
             </Button>
