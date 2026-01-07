@@ -1,0 +1,12 @@
+import React from 'react'
+
+const page = () => {
+  const string = `
+eyJ1c2VybmFtZSI6InNrdGFkbWluMTg5IiwiZW1haWwiOiJza3RhZG1pbkBnbWFpbC5jb20iLCJmaXJzdF9uYW1lIjoiU2t0IiwibGFzdF9uYW1lIjoiQWRtaW4iLCJwaG9uZV9ubyI6IjAzMDAwMDAwMDAwIiwibGlicmFyeV9pZCI6MTMsInJvbGUiOiJhZG1pbiIsInBhc3N3b3JkIjoic2t0YWRtaW5ATGliMTg5IiwibmFtZSI6IlNrdCBMSWJyYXJ5IiwiY29kZSI6IlNLVCIsImFkZHJlc3MiOiJIb21lIiwicGhvbmUiOiIwMzAwMDAwMDAwMCIsImxpYnJhcnlfZW1haWwiOiJza3QubGlicmFyeUBnbWFpbC5jb20iLCJvcGVuaW5nX3RpbWUiOiIwOTowMDowMCIsImNsb3NpbmdfdGltZSI6IjE3OjAwOjAwIiwiaXNfYWN0aXZlIjp0cnVlLCJjcmVhdGVkX2F0IjoiMjAyNi0wMS0wNFQxMjowMDowNi4wMjA3NTkrMDA6MDAifQ:1vcMmW:TAreZypjd3ocR_8cLBXOvQRNm2UW5GNI6sYh6uKU__c
+  
+  `
+
+  return <pre>{string}</pre>
+}
+
+export default page

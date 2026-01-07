@@ -2,6 +2,7 @@
 import { ChartAreaInteractive } from '@/components/app/dashboard/chart-area-interactive'
 import { ChartPieDonutText } from '@/components/app/dashboard/memberships-pie-chart'
 import { SectionCards } from '@/components/app/dashboard/section-cards'
+import { useLibraryStore } from '@/zustand/libraries'
 import { useMemberStore } from '@/zustand/members'
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
@@ -11,6 +12,7 @@ import React from 'react'
 const DashboardPage = () => {
   const { data: session }: any = useSession()
   const { members, setMembers } = useMemberStore()
+  const { setLibraries } = useLibraryStore()
   const [totalmembers, setTotalMembers] = React.useState(0)
   const [stats, setStats] = React.useState({
     active_memberships: 0,
@@ -34,8 +36,9 @@ const DashboardPage = () => {
       if (res.status === 200) {
         console.log(res.data)
         setStats(res.data.stats)
-        setTotalMembers(res.data.count)
-        setMembers(res.data.members)
+        setTotalMembers(res.data.count || 0)
+        setMembers(res.data.members || [])
+        setLibraries(res.data.libraries || [])
       }
 
       return res.data.members

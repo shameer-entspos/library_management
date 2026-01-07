@@ -48,7 +48,7 @@ export function SearchableSelect({
           variant="outline"
           role="combobox"
           disabled={disabled}
-          className="h-10! w-full justify-between"
+          className={`${selected ? 'text-foreground' : 'text-muted-foreground'} h-10! w-full justify-between`}
         >
           {selected ? selected.label : placeholder}
           <ChevronsUpDown className="h-4 w-4 opacity-50" />
@@ -57,7 +57,7 @@ export function SearchableSelect({
       <PopoverContent
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
-        className="w-[--radix-popover-trigger-width] p-0"
+        className="w-[var(--radix-popover-trigger-width)] min-w-xs p-0"
       >
         {' '}
         {/* Optional: match trigger width */}

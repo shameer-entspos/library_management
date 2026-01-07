@@ -73,7 +73,6 @@ export default function LoginPreview() {
         })
 
         if (res.status === 200) {
-          console.log(res.data)
           const user = res.data
 
           if (user.role == 'member') {

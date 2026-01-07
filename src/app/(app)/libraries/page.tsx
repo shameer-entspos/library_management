@@ -1,17 +1,16 @@
-'use client'
-import { MembersDataTable } from '@/components/app/dashboard/data-table'
-import React, { useEffect, useState } from 'react'
+import LibrariesList from '@/components/app/libraries/librariesList'
+import React from 'react'
 
-const MembersPage = () => {
+const LibrariesPage = () => {
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          <MembersDataTable />
+          <LibrariesList />
         </div>
       </div>
     </div>
   )
 }
 
-export default MembersPage
+export default LibrariesPage
