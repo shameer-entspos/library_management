@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import {
+  IconBuildingBank,
   IconCamera,
   IconChartBar,
   IconClockHour11,
@@ -48,6 +49,11 @@ const data = {
       title: 'Members',
       url: '/members',
       icon: IconUsers,
+    },
+    {
+      title: 'Libraries',
+      url: '/libraries',
+      icon: IconBuildingBank,
     },
     {
       title: 'Attendances',
@@ -147,8 +153,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <div className="flex items-center gap-2 p-2">
               <>
-                <HiOutlineLibrary className="text-primary !size-7 dark:text-green-400" />
-                <span className="from-primary bg-gradient-to-r via-green-500 to-emerald-500 bg-clip-text text-2xl font-bold text-transparent">
+                <HiOutlineLibrary className="text-primary size-7! dark:text-green-400" />
+                <span className="from-primary bg-linear-to-r via-green-500 to-emerald-500 bg-clip-text text-2xl font-bold text-transparent">
                   E-Library
                 </span>
               </>

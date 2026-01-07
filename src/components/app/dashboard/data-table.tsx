@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/table'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
+  ArrowUpDown,
   Calendar,
   Clock,
   Columns,
@@ -93,6 +94,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import Link from 'next/link'
+import { useProfile } from '@/zustand/profile'
 
 // Define columns using your actual Member type
 const columns: ColumnDef<Member>[] = [
@@ -135,7 +137,16 @@ const columns: ColumnDef<Member>[] = [
   },
   {
     id: 'name',
-    header: 'Name',
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+        className="h-8 px-0"
+      >
+        Name
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     accessorFn: (row) => `${row.first_name} ${row.last_name}`.toLowerCase(),
     cell: ({ row }) => (
       <div className="font-medium">
@@ -433,13 +444,25 @@ const Actions = ({ member }: { member: any }) => {
 export function MembersDataTable() {
   // Live data from Zustand — updates instantly!
   const members = useMemberStore((state) => state.members)
-
+  const { profile } = useProfile()
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({})
+    React.useState<VisibilityState>(() => {
+      if (profile?.role === 'super_admin') {
+        return {
+          category: false,
+          age_group: false,
+          city: false,
+          QR: false,
+          country: false,
+          membership: false,
+        } as VisibilityState
+      }
+      return {} as VisibilityState
+    })
   const [rowSelection, setRowSelection] = React.useState({})
   const [searchValue, setSearchValue] = React.useState('')
   const [globalFilter, setGlobalFilter] = React.useState('')
@@ -490,7 +513,7 @@ export function MembersDataTable() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2">
+        <div className="">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">

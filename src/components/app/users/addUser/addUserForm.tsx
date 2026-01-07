@@ -373,7 +373,7 @@ export default function AddUserForm() {
       }}
     >
       <DialogTrigger asChild onClick={() => setOpen(true)}>
-        <Button variant="default" className="h-9! text-white">
+        <Button variant="default" className="h-9!">
           <Plus />
           <span className="hidden sm:inline-block">Add Member</span>
         </Button>

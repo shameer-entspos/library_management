@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/sidebar'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useProfile } from '@/zustand/profile'
 
 export function NavMain({
   items,
@@ -22,6 +23,8 @@ export function NavMain({
   }[]
 }) {
   const pathname = usePathname()
+  const { profile } = useProfile()
+
   return (
     <SidebarGroup>
       <SidebarGroupContent className="flex flex-col gap-2">
@@ -37,19 +40,21 @@ export function NavMain({
           </SidebarMenuItem>
         </SidebarMenu>
         <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <Link href={item.url}>
-                <SidebarMenuButton
-                  variant={pathname === item.url ? 'outline' : undefined}
-                  tooltip={item.title}
-                >
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          ))}
+          {items.map((item) =>
+            profile?.role === 'admin' && item.title === 'Libraries' ? null : (
+              <SidebarMenuItem key={item.title}>
+                <Link href={item.url}>
+                  <SidebarMenuButton
+                    variant={pathname === item.url ? 'outline' : undefined}
+                    tooltip={item.title}
+                  >
+                    {item.icon && <item.icon />}
+                    <span>{item.title}</span>
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            )
+          )}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

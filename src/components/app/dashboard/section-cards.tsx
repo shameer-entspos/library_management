@@ -1,9 +1,14 @@
+'use client'
+
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { useLibraryStore } from '@/zustand/libraries'
+import { useMemberStore } from '@/zustand/members'
+import { useProfile } from '@/zustand/profile'
 
 export function SectionCards({
   total,
@@ -11,12 +16,20 @@ export function SectionCards({
 }: {
   total: number
   stats: {
-    active_memberships: number
+    active_memberships?: number
     today_attendance: number
     total_users: number
     verified: number
+    total_libraries?: number
   }
 }) {
+  const { profile } = useProfile()
+  const { members } = useMemberStore()
+  const { libraries } = useLibraryStore()
+
+  const memberCount = members?.length || 0
+  const libraryCount = libraries?.length || 0
+
   return (
     <div className="*:data-[slot=card]:from-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-3 px-4 *:data-[slot=card]:bg-linear-to-br sm:gap-4 lg:px-6 @sm/main:grid-cols-2 @5xl/main:grid-cols-4 *:data-[slot=card]:[&:nth-child(4n)]:to-amber-500/30 *:data-[slot=card]:[&:nth-child(4n)]:dark:to-amber-500/50 *:data-[slot=card]:[&:nth-child(4n+1)]:to-emerald-500/30 *:data-[slot=card]:[&:nth-child(4n+1)]:dark:to-emerald-500/50 *:data-[slot=card]:[&:nth-child(4n+2)]:to-violet-500/30 *:data-[slot=card]:[&:nth-child(4n+2)]:dark:to-violet-500/50 *:data-[slot=card]:[&:nth-child(4n+3)]:to-sky-500/30 *:data-[slot=card]:[&:nth-child(4n+3)]:dark:to-sky-500/50">
       {/* Total Users */}
@@ -31,7 +44,7 @@ export function SectionCards({
             Total Users
           </CardDescription>
           <CardTitle className="text-end text-2xl font-semibold text-emerald-500 tabular-nums md:text-3xl lg:text-5xl">
-            {stats?.total_users ?? 0}
+            {memberCount}
           </CardTitle>
         </CardHeader>
       </Card>
@@ -45,10 +58,14 @@ export function SectionCards({
       >
         <CardHeader className="px-4 sm:px-6">
           <CardDescription className="text-foreground/80 font-normal">
-            Active Memberships
+            {profile?.role === 'super_admin'
+              ? 'Total Libraries'
+              : 'Active Memberships'}
           </CardDescription>
           <CardTitle className="text-end text-2xl font-semibold text-purple-500 tabular-nums md:text-3xl lg:text-5xl">
-            {stats?.active_memberships ?? 0}
+            {profile?.role === 'super_admin'
+              ? (libraryCount ?? 0)
+              : (stats?.active_memberships ?? 0)}
           </CardTitle>
         </CardHeader>
       </Card>
